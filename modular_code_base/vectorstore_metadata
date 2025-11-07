@@ -1,0 +1,191 @@
+{
+  "dynamic_knowledge/jenkins_logs/20250918_111201/build_numbers.txt": {
+    "last_modified": "2025-09-18T11:12:01.452000+00:00",
+    "size": 11,
+    "etag": "c02b314ed00f6f4e94e730e27eaf2eb7",
+    "content_hash": "c02b314ed00f6f4e94e730e27eaf2eb7",
+    "updated_at": "2025-09-18T11:12:01.717138"
+  },
+  "dynamic_knowledge/jenkins_logs/20250918_111201/build_selection_info.txt": {
+    "last_modified": "2025-09-18T11:12:01.520000+00:00",
+    "size": 280,
+    "etag": "f4d5c1a41b0aeabdd46867aa2c34ce99",
+    "content_hash": "f4d5c1a41b0aeabdd46867aa2c34ce99",
+    "updated_at": "2025-09-18T11:12:02.315900"
+  },
+  "dynamic_knowledge/jenkins_logs/20250918_111201/yocto-build-14-SUCCESS-info.txt": {
+    "last_modified": "2025-09-18T11:12:01.581000+00:00",
+    "size": 3002,
+    "etag": "60bf1540cff575d3cc165356ed480798",
+    "content_hash": "60bf1540cff575d3cc165356ed480798",
+    "updated_at": "2025-09-18T11:12:08.300564"
+  },
+  "dynamic_knowledge/jenkins_logs/20250918_111201/yocto-build-14-SUCCESS.txt": {
+    "last_modified": "2025-09-18T11:12:01.643000+00:00",
+    "size": 45243,
+    "etag": "1163aded0252de39c6f8a26d3779ce92",
+    "content_hash": "1163aded0252de39c6f8a26d3779ce92",
+    "updated_at": "2025-09-18T11:13:03.276392"
+  },
+  "dynamic_knowledge/jenkins_logs/20250918_111201/yocto-build-16-FAILURE-info.txt": {
+    "last_modified": "2025-09-18T11:12:01.723000+00:00",
+    "size": 2252,
+    "etag": "31be84f02ca3f66fe066e7a43096f54d",
+    "content_hash": "31be84f02ca3f66fe066e7a43096f54d",
+    "updated_at": "2025-09-18T11:13:14.266742"
+  },
+  "dynamic_knowledge/jenkins_logs/20250918_111201/upload-summary.txt": {
+    "last_modified": "2025-09-18T11:12:02.660000+00:00",
+    "size": 842,
+    "etag": "7ae6b34446c138cef5a58d075d89c27f",
+    "content_hash": "7ae6b34446c138cef5a58d075d89c27f",
+    "updated_at": "2025-09-18T11:13:15.473223"
+  },
+  "dynamic_knowledge/jenkins_logs/20250918_111201/yocto-build-16-FAILURE.txt": {
+    "last_modified": "2025-09-18T11:12:01.787000+00:00",
+    "size": 9318,
+    "etag": "b478c7d0c5018a4fde12400a88afaf3a",
+    "content_hash": "b478c7d0c5018a4fde12400a88afaf3a",
+    "updated_at": "2025-09-18T11:13:26.686285"
+  },
+  "dynamic_knowledge/jenkins_logs/20250918_111201/yocto-build-17-FAILURE-info.txt": {
+    "last_modified": "2025-09-18T11:12:01.848000+00:00",
+    "size": 2251,
+    "etag": "3b1a1bb80526afff8d1fb465b8104c8e",
+    "content_hash": "3b1a1bb80526afff8d1fb465b8104c8e",
+    "updated_at": "2025-09-18T11:13:37.645701"
+  },
+  "dynamic_knowledge/jenkins_logs/20250918_111201/yocto-build-17-FAILURE.txt": {
+    "last_modified": "2025-09-18T11:12:01.915000+00:00",
+    "size": 9318,
+    "etag": "c7fa3774254e8496dd0703e17fc937ed",
+    "content_hash": "c7fa3774254e8496dd0703e17fc937ed",
+    "updated_at": "2025-09-18T11:13:49.003064"
+  },
+  "dynamic_knowledge/jenkins_logs/20250918_111201/yocto-build-18-SUCCESS-info.txt": {
+    "last_modified": "2025-09-18T11:12:02.001000+00:00",
+    "size": 2930,
+    "etag": "a42e57de3986a5627d13b73c05d1e4c3",
+    "content_hash": "a42e57de3986a5627d13b73c05d1e4c3",
+    "updated_at": "2025-09-18T11:13:54.586161"
+  },
+  "dynamic_knowledge/jenkins_logs/20250918_111201/yocto-build-18-SUCCESS.txt": {
+    "last_modified": "2025-09-18T11:12:02.077000+00:00",
+    "size": 17860,
+    "etag": "af1e5f43f9e58a74cd3a2d631abe551d",
+    "content_hash": "af1e5f43f9e58a74cd3a2d631abe551d",
+    "updated_at": "2025-09-18T11:14:13.854216"
+  },
+  "yocto-files/meta-myhello/recipes-example/hello-world/hello-world_1.0.bb": {
+    "last_modified": "2025-10-06T10:20:16.137000+00:00",
+    "size": 672,
+    "etag": "d385d67faa9cad4036cc4849668bcf26",
+    "content_hash": "d385d67faa9cad4036cc4849668bcf26",
+    "updated_at": "2025-10-06T10:20:18.562546"
+  },
+  "yocto-files/meta-myhello/conf/layer.conf": {
+    "last_modified": "2025-09-30T09:53:24.289000+00:00",
+    "size": 420,
+    "etag": "27bfecf318e9a3e2453b9dba54704025",
+    "content_hash": "27bfecf318e9a3e2453b9dba54704025",
+    "updated_at": "2025-09-30T09:53:25.326729"
+  },
+  "yocto-files/meta-myhello/recipes-example/example/example_0.1.bb": {
+    "last_modified": "2025-09-30T09:53:24.408000+00:00",
+    "size": 496,
+    "etag": "e292bb7560d9039b1b94a6bd6240e83f",
+    "content_hash": "e292bb7560d9039b1b94a6bd6240e83f",
+    "updated_at": "2025-09-30T09:53:26.218492"
+  },
+  "yocto-files/.full-upload-complete": {
+    "last_modified": "2025-09-30T09:53:24.668000+00:00",
+    "size": 57,
+    "etag": "0a1f9a995a21f13cf1031e3e19d95653-1",
+    "content_hash": "c8fb309257105248195e0e6c6f0a10cc",
+    "updated_at": "2025-09-30T09:53:26.480476"
+  },
+  "dynamic_knowledge/fetch_logs/manifest_20251005_191840.json": {
+    "last_modified": "2025-10-05T19:18:40.778000+00:00",
+    "size": 296,
+    "etag": "de970cf24e9108a915332896af8db2e2",
+    "content_hash": "de970cf24e9108a915332896af8db2e2",
+    "updated_at": "2025-10-05T19:18:41.773411"
+  },
+  "dynamic_knowledge/fetch_logs/logs_20251005_191840.txt": {
+    "last_modified": "2025-10-05T19:18:40.851000+00:00",
+    "size": 22904,
+    "etag": "0164487d75774583a81ce9a64bc6139a",
+    "content_hash": "0164487d75774583a81ce9a64bc6139a",
+    "updated_at": "2025-10-05T19:19:14.001800"
+  },
+  "dynamic_knowledge/fetch_logs/logs_metadata_20251005_191840.txt": {
+    "last_modified": "2025-10-05T19:18:40.913000+00:00",
+    "size": 115,
+    "etag": "231a8a4a57bdc705f8a2594df8f5238a",
+    "content_hash": "231a8a4a57bdc705f8a2594df8f5238a",
+    "updated_at": "2025-10-05T19:19:14.296426"
+  },
+  "static_knowledge/test1/page_metadata.json": {
+    "last_modified": "2025-10-05T20:29:48.941000+00:00",
+    "size": 455,
+    "etag": "9a6d37199e0baa68e3e37418e3088979",
+    "content_hash": "9a6d37199e0baa68e3e37418e3088979",
+    "updated_at": "2025-10-05T20:29:50.238858"
+  },
+  "static_knowledge/test1/rag_summary.json": {
+    "last_modified": "2025-10-05T20:29:48.941000+00:00",
+    "size": 361,
+    "etag": "d139b75e3fff4e309d029a3e4f8f1bbf",
+    "content_hash": "d139b75e3fff4e309d029a3e4f8f1bbf",
+    "updated_at": "2025-10-05T20:29:50.863015"
+  },
+  "static_knowledge/test1/test1_v1_35291186.md": {
+    "last_modified": "2025-10-05T20:29:48.938000+00:00",
+    "size": 5,
+    "etag": "0812f2b6e2eb60ef73c07e216a713319",
+    "content_hash": "0812f2b6e2eb60ef73c07e216a713319",
+    "updated_at": "2025-10-05T20:29:51.050850"
+  },
+  "static_knowledge/Yocto_Build_Pipeline_Documentation/page_metadata.json": {
+    "last_modified": "2025-10-16T08:43:36.861000+00:00",
+    "size": 692,
+    "etag": "0cdfa7fafb50c902d6daaafd14c03ab1",
+    "content_hash": "0cdfa7fafb50c902d6daaafd14c03ab1",
+    "updated_at": "2025-10-16T09:13:20.374002"
+  },
+  "static_knowledge/Yocto_Build_Pipeline_Documentation/rag_summary.json": {
+    "last_modified": "2025-10-16T08:43:36.857000+00:00",
+    "size": 367,
+    "etag": "88eb3d6d79e066b5b49f50f20fdd5603",
+    "content_hash": "88eb3d6d79e066b5b49f50f20fdd5603",
+    "updated_at": "2025-10-16T09:13:21.322032"
+  },
+  "static_knowledge/Test/Test_v1_35291207.md": {
+    "last_modified": "2025-10-05T20:32:51.043000+00:00",
+    "size": 5,
+    "etag": "0812f2b6e2eb60ef73c07e216a713319",
+    "content_hash": "0812f2b6e2eb60ef73c07e216a713319",
+    "updated_at": "2025-10-05T20:32:51.315344"
+  },
+  "static_knowledge/Test/page_metadata.json": {
+    "last_modified": "2025-10-05T20:32:51.045000+00:00",
+    "size": 450,
+    "etag": "c0fa4ae38feb577f10f94dc621054e5f",
+    "content_hash": "c0fa4ae38feb577f10f94dc621054e5f",
+    "updated_at": "2025-10-05T20:32:52.205155"
+  },
+  "static_knowledge/Test/rag_summary.json": {
+    "last_modified": "2025-10-05T20:32:51.045000+00:00",
+    "size": 361,
+    "etag": "c7d6c70e88ab08cf787bcee0095b2d57",
+    "content_hash": "c7d6c70e88ab08cf787bcee0095b2d57",
+    "updated_at": "2025-10-05T20:32:52.782047"
+  },
+  "static_knowledge/Yocto_Build_Pipeline_Documentation/Yocto_Build_Pipeline_Documentation_v53_131210.md": {
+    "last_modified": "2025-10-16T08:43:36.860000+00:00",
+    "size": 7196,
+    "etag": "46b7ecda45ca711793da739032d2afa7",
+    "content_hash": "46b7ecda45ca711793da739032d2afa7",
+    "updated_at": "2025-10-16T09:13:18.413107"
+  }
+}

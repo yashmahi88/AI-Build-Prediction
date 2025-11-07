@@ -1,0 +1,28 @@
+2025-11-07 07:32:49,356 - app.services.vectorstore_service - INFO - 🔧 Initializing VectorStoreService with path: ./vectorstore
+2025-11-07 07:32:49,498 - app.services.vectorstore_service - INFO - ✅ Embeddings initialized
+2025-11-07 07:32:49,499 - app.services.vectorstore_service - DEBUG - Vectorstore exists check: True
+2025-11-07 07:32:49,499 - app.services.vectorstore_service - INFO - 📂 Vectorstore found at: ./vectorstore
+2025-11-07 07:32:49,499 - app.services.vectorstore_service - INFO - 📚 Loading vectorstore from: ./vectorstore
+2025-11-07 07:32:49,500 - faiss.loader - DEBUG - Environment variable FAISS_OPT_LEVEL is not set, so let's pick the instruction set according to the current CPU
+2025-11-07 07:32:49,500 - faiss.loader - INFO - Loading faiss with AVX2 support.
+2025-11-07 07:32:49,525 - faiss.loader - INFO - Successfully loaded faiss with AVX2 support.
+2025-11-07 07:32:49,537 - app.services.vectorstore_service - INFO - ✅ Loaded vector store successfully
+2025-11-07 07:32:49,537 - app.services.vectorstore_service - INFO - ✅ Vectorstore loaded successfully
+INFO:     Started server process [343567]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-11-07 07:32:57,818 - app.main - ERROR - ❌ Validation error: [{'type': 'missing', 'loc': ('body', 'messages'), 'msg': 'Field required', 'input': {'pipeline': 'test pipeline content'}}]
+🚀 Starting Yocto Build Analyzer...
+📦 Initializing database pool...
+✅ PostgreSQL connection pool initialized
+✅ Database tables created/verified
+✅ Database initialized
+📚 Initializing vector store...
+⚠️ Vector store warning: 'VectorStoreService' object has no attribute 'load_or_build'
+✅ Application ready!
+INFO:     127.0.0.1:54974 - "POST /v1/chat/completions HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:43578 - "POST /v1/chat/completions HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:43590 - "POST /api/feedback/submit HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:35094 - "POST /v1/chat/completions HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:35108 - "POST /api/feedback/submit HTTP/1.1" 500 Internal Server Error
