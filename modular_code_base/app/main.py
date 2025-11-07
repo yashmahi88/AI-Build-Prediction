@@ -7,11 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-from app.api.routes import router
-from app.services.vectorstore_service import VectorStoreService
-from app.core.config import get_settings
-from app.core.database import init_db_pool, create_tables
 import asyncio
+
 
 # Configure logging
 logging.basicConfig(
@@ -20,44 +17,50 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+# Import after logging is configured
+from app.api.routes import router
+from app.services.vectorstore_service import VectorStoreService
+from app.core.config import get_settings
+from app.core.database import init_db_pool, create_tables
+
+
 settings = get_settings()
 vectorstore_service = VectorStoreService()
+shutdown_event = asyncio.Event()
 
-# Track running tasks for graceful shutdown
-running_tasks = set()
 
 def signal_handler(signum, frame):
     """Handle Ctrl+C gracefully"""
     logger.info("⏹️ Ctrl+C detected - initiating graceful shutdown...")
-    
-    # Cancel all running tasks
-    for task in asyncio.all_tasks():
-        task.cancel()
-    
-    print("\n🛑 Stopping all processes...")
     sys.exit(0)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    print("🚀 Starting Yocto Build Analyzer...")
+    """Application lifecycle manager - startup and shutdown"""
     
+    # ========= STARTUP =========
+    logger.info("🚀 Starting Yocto Build Analyzer...")
+    
+    # Initialize database
     try:
-        print("📦 Initializing database pool...")
+        logger.info("📦 Initializing database pool...")
         init_db_pool()
         create_tables()
-        print("✅ Database initialized")
+        logger.info("✅ Database initialized")
     except Exception as e:
-        print(f"⚠️ Database init warning: {e}")
+        logger.warning(f"⚠️ Database init warning: {e}")
     
+    # Initialize vector store
     try:
-        print("📚 Initializing vector store...")
+        logger.info("📚 Initializing vector store...")
         vectorstore_service.load_or_build()
-        print("✅ Vector store ready")
+        logger.info("✅ Vector store ready")
     except Exception as e:
-        print(f"⚠️ Vector store warning: {e}")
+        logger.warning(f"⚠️ Vector store warning: {e}")
     
-    print("✅ Application ready!")
+    logger.info("✅ Application ready on http://0.0.0.0:8000")
     
     # Setup signal handlers
     signal.signal(signal.SIGINT, signal_handler)
@@ -65,22 +68,40 @@ async def lifespan(app: FastAPI):
     
     yield
     
-    # Shutdown
+    # ========= SHUTDOWN =========
     logger.info("🛑 Shutting down...")
     
-    # Cancel all tasks
-    for task in asyncio.all_tasks():
-        if not task.done():
-            task.cancel()
+    try:
+        # Cancel all running tasks
+        pending = asyncio.all_tasks()
+        for task in pending:
+            if not task.done():
+                task.cancel()
+        
+        # Wait for tasks to complete
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+        
+        logger.info("✅ All tasks cancelled")
+    except Exception as e:
+        logger.error(f"Error during shutdown: {e}")
+    
+    logger.info("🛑 Application stopped")
 
+
+# Create FastAPI app with lifespan
 app = FastAPI(
     title="Yocto Build Analyzer",
-    description="RAG-based Yocto build prediction system",
+    description="RAG-based Yocto build prediction system with feedback learning",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
 )
 
-# CORS Middleware
+
+# Add CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -89,52 +110,97 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routes
+
+# Include API routes - IMPORTANT: routes already have /api prefix
 app.include_router(router)
 
-# Global exception handler
+
+# Global exception handler for unhandled exceptions
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
+    """Handle any unhandled exceptions"""
     logger.exception(f"🔴 Unhandled exception: {exc}")
     return JSONResponse(
         status_code=500,
-        content={"detail": str(exc)}
+        content={
+            "detail": "Internal server error",
+            "error": str(exc)
+        }
     )
 
+
+# Handler for validation errors
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
+    """Handle validation errors"""
     logger.error(f"❌ Validation error: {exc}")
     return JSONResponse(
         status_code=422,
-        content={"detail": exc.errors()}
+        content={
+            "detail": "Validation error",
+            "errors": exc.errors()
+        }
     )
 
+
+# Health check endpoint (outside router)
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "service": "yocto-analyzer",
+        "version": "1.0.0"
+    }
+
+
+# Root endpoint (outside router)
 @app.get("/")
 async def root():
+    """Root endpoint - API information"""
     return {
         "message": "Yocto Build Analyzer API",
         "version": "1.0.0",
-        "status": "running"
+        "status": "running",
+        "docs": "http://localhost:8000/docs",
+        "endpoints": {
+            "health": "GET /health",
+            "api_docs": "GET /docs",
+            "redoc": "GET /redoc",
+            "openapi": "GET /openapi.json"
+        }
     }
+
+
+# ========= MAIN ENTRY POINT =========
 
 if __name__ == "__main__":
     import uvicorn
     
-    # Create server with timeout settings
+    logger.info("=" * 80)
+    logger.info("Starting Yocto Build Analyzer")
+    logger.info("=" * 80)
+    
+    # Create uvicorn config
     config = uvicorn.Config(
         app,
         host="0.0.0.0",
         port=8000,
-        log_level="debug",
-        timeout_keep_alive=30,  # Keep-alive timeout
-        timeout_notify=30,      # Notify timeout
+        log_level="info",
+        access_log=True,
+        timeout_keep_alive=30,
+        timeout_notify=30,
+        timeout_graceful_shutdown=30,
     )
     
     server = uvicorn.Server(config)
     
-    # Run with signal handling
+    # Run server
     try:
         asyncio.run(server.serve())
     except KeyboardInterrupt:
         logger.info("⏹️ Server stopped by user")
         sys.exit(0)
+    except Exception as e:
+        logger.exception(f"Server error: {e}")
+        sys.exit(1)
