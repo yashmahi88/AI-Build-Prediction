@@ -134,6 +134,7 @@ async def analyze_pipeline(
 
 # ========= CHAT COMPLETIONS (OpenAI Compatible) =========
 
+
 @router.post("/v1/chat/completions")
 async def chat_completions(
     request: ChatRequest,
@@ -144,6 +145,8 @@ async def chat_completions(
     user_id = await get_user_id(http_request, x_user_id)
     prediction_id = str(uuid.uuid4())
     lock_acquired = False
+    
+    logger.info(f"Generated prediction_id: {prediction_id}")
     
     if await check_user_request_limit(user_id):
         raise HTTPException(status_code=429, detail="Request in progress")
@@ -158,11 +161,54 @@ async def chat_completions(
         if not user_message:
             raise HTTPException(status_code=400, detail="Empty message")
         
-        # Use enhanced analysis service
         enhanced_service = get_enhanced_analysis_service()
         result = await enhanced_service.comprehensive_analyze(user_message, user_id)
         
         response_text = result.get('analysis', 'No analysis available')
+        
+        # ========= SAVE TO DATABASE =========
+        try:
+            script_hash = hashlib.sha256(user_message.encode()).hexdigest()
+            
+            predicted_result = result.get('prediction', 'UNKNOWN')
+            confidence_score = result.get('confidence', 50)
+            violated_rules = result.get('violated_rules', 0)
+            
+            with get_db_connection() as conn:
+                with get_db_cursor(conn) as cur:
+                    rules_applied = result.get('all_rules', [])
+                    detected_stack = result.get('stack', [])
+                    
+                    # Ensure detected_stack is a list of strings
+                    if not isinstance(detected_stack, list):
+                        detected_stack = []
+                    
+                    cur.execute("""
+                        INSERT INTO predictions (
+                            user_id, pipeline_name, predicted_result,
+                            confidence_score, violated_rules,
+                            pipeline_script_hash, detected_stack, rules_applied, id
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s)
+                    """, (
+                        user_id, "chat_completion",
+                        predicted_result,
+                        confidence_score,
+                        violated_rules,
+                        script_hash,
+                        detected_stack,              # Python list → PostgreSQL text[]
+                        json.dumps(rules_applied),   # JSON string → PostgreSQL jsonb
+                        prediction_id
+                    ))
+                    conn.commit()
+                    logger.info(f"✅ Stored prediction {prediction_id} in DB")
+        
+        except Exception as db_error:
+            logger.error(f"❌ DB save failed: {db_error}")
+            import traceback
+            logger.error(traceback.format_exc())
+        # ========= END DATABASE SAVE =========
+        
+        logger.info(f"📤 Returning prediction_id: {prediction_id}")
         
         return {
             "id": f"chatcmpl-{prediction_id}",
@@ -190,6 +236,64 @@ async def chat_completions(
     finally:
         if lock_acquired:
             await release_user_lock(user_id)
+
+
+# @router.post("/v1/chat/completions")
+# async def chat_completions(
+#     request: ChatRequest,
+#     http_request: Request,
+#     x_user_id: Optional[str] = Header(None)
+# ):
+#     """OpenAI-compatible chat completions with enhanced RAG analysis"""
+#     user_id = await get_user_id(http_request, x_user_id)
+#     prediction_id = str(uuid.uuid4())
+#     lock_acquired = False
+    
+#     if await check_user_request_limit(user_id):
+#         raise HTTPException(status_code=429, detail="Request in progress")
+    
+#     try:
+#         lock_acquired = await acquire_user_lock(user_id)
+        
+#         if not request.messages:
+#             raise HTTPException(status_code=400, detail="No messages provided")
+        
+#         user_message = request.messages[-1].get("content", "")
+#         if not user_message:
+#             raise HTTPException(status_code=400, detail="Empty message")
+        
+#         # Use enhanced analysis service
+#         enhanced_service = get_enhanced_analysis_service()
+#         result = await enhanced_service.comprehensive_analyze(user_message, user_id)
+        
+#         response_text = result.get('analysis', 'No analysis available')
+        
+#         return {
+#             "id": f"chatcmpl-{prediction_id}",
+#             "object": "chat.completion",
+#             "created": int(time.time()),
+#             "model": request.model,
+#             "prediction_id": prediction_id,
+#             "choices": [{
+#                 "index": 0,
+#                 "message": {"role": "assistant", "content": response_text},
+#                 "finish_reason": "stop"
+#             }],
+#             "usage": {
+#                 "prompt_tokens": len(user_message.split()),
+#                 "completion_tokens": len(response_text.split()),
+#                 "total_tokens": len(user_message.split()) + len(response_text.split())
+#             }
+#         }
+    
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         logger.exception(f"Chat error: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
+#     finally:
+#         if lock_acquired:
+#             await release_user_lock(user_id)
 
 
 # ========= COMPLETIONS (OpenAI Compatible) =========
@@ -304,13 +408,26 @@ async def submit_feedback(
                 if not prediction:
                     raise HTTPException(status_code=404, detail="Prediction not found")
                 
-                # Determine if prediction was correct
+                # ========= CHANGED: Fixed prediction matching =========
+                predicted = prediction['predicted_result'].upper().strip()
+                actual = feedback.actual_build_result.upper().strip()
+                
+                # Map HIGH-RISK/HIGH_RISK to FAIL for comparison
+                if 'HIGH' in predicted or 'RISK' in predicted:
+                    predicted = 'FAIL'
+                
+                # Normalize PASS/SUCCESS
+                if predicted in ['PASS', 'SUCCESS']:
+                    predicted = 'PASS'
+                if actual in ['PASS', 'SUCCESS']:
+                    actual = 'SUCCESS'
+                
+                # Check if correct
                 correct = (
-                    (prediction['predicted_result'] == "PASS" and 
-                     feedback.actual_build_result == "SUCCESS") or
-                    (prediction['predicted_result'] == "FAIL" and 
-                     feedback.actual_build_result == "FAILURE")
+                    (predicted == "PASS" and actual == "SUCCESS") or
+                    (predicted == "FAIL" and actual == "FAILURE")
                 )
+                # ========= END CHANGED =========
                 
                 # Convert to Python lists
                 missed = feedback.missed_issues if feedback.missed_issues else []
@@ -347,7 +464,7 @@ async def submit_feedback(
                 """, (feedback.actual_build_result, feedback.prediction_id))
                 
                 conn.commit()
-                logger.info(f"✅ Feedback {feedback_id} submitted")
+                logger.info(f"✅ Feedback {feedback_id} submitted (correct={correct})")
         
         # Learn from feedback asynchronously
         try:
@@ -371,6 +488,96 @@ async def submit_feedback(
     except Exception as e:
         logger.exception(f"Feedback error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# @router.post("/api/feedback/submit", response_model=FeedbackResponse)
+# async def submit_feedback(
+#     feedback: FeedbackRequest,
+#     x_user_id: Optional[str] = Header(None)
+# ):
+#     """Submit feedback on a prediction and learn from it"""
+#     user_id = x_user_id or "anonymous"
+    
+#     try:
+#         with get_db_connection() as conn:
+#             with get_db_cursor(conn) as cur:
+#                 # Get prediction details
+#                 cur.execute("""
+#                     SELECT predicted_result, rules_applied, confidence_score
+#                     FROM predictions WHERE id::text = %s
+#                 """, (feedback.prediction_id,))
+                
+#                 prediction = cur.fetchone()
+#                 if not prediction:
+#                     raise HTTPException(status_code=404, detail="Prediction not found")
+                
+#                 # Determine if prediction was correct
+#                 correct = (
+#                     (prediction['predicted_result'] == "PASS" and 
+#                      feedback.actual_build_result == "SUCCESS") or
+#                     (prediction['predicted_result'] == "FAIL" and 
+#                      feedback.actual_build_result == "FAILURE")
+#                 )
+                
+#                 # Convert to Python lists
+#                 missed = feedback.missed_issues if feedback.missed_issues else []
+#                 false_pos = feedback.false_positives if feedback.false_positives else []
+                
+#                 # Insert feedback
+#                 cur.execute("""
+#                     INSERT INTO feedback (
+#                         prediction_id, user_id, actual_build_result,
+#                         correct_prediction, corrected_confidence,
+#                         missed_issues, false_positives, user_comments,
+#                         feedback_type
+#                     ) VALUES (%s::uuid, %s, %s, %s, %s, %s, %s, %s, %s)
+#                     RETURNING id
+#                 """, (
+#                     feedback.prediction_id,
+#                     user_id,
+#                     feedback.actual_build_result,
+#                     correct,
+#                     feedback.corrected_confidence,
+#                     missed,
+#                     false_pos,
+#                     feedback.user_comments,
+#                     feedback.feedback_type or "manual"
+#                 ))
+                
+#                 feedback_id = cur.fetchone()['id']
+                
+#                 # Update prediction with feedback
+#                 cur.execute("""
+#                     UPDATE predictions
+#                     SET actual_result = %s, feedback_received_at = NOW()
+#                     WHERE id = %s::uuid
+#                 """, (feedback.actual_build_result, feedback.prediction_id))
+                
+#                 conn.commit()
+#                 logger.info(f"✅ Feedback {feedback_id} submitted")
+        
+#         # Learn from feedback asynchronously
+#         try:
+#             await learn_from_feedback_async(
+#                 str(feedback_id),
+#                 prediction['rules_applied'],
+#                 feedback,
+#                 correct
+#             )
+#         except Exception as e:
+#             logger.warning(f"⚠️ Learning error: {e}")
+        
+#         return {
+#             "status": "success",
+#             "feedback_id": str(feedback_id),
+#             "was_correct": correct
+#         }
+    
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         logger.exception(f"Feedback error: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
 
 
 async def learn_from_feedback_async(
@@ -619,18 +826,20 @@ async def get_rule_performance(x_user_id: Optional[str] = Header(None)):
     try:
         with get_db_connection() as conn:
             with get_db_cursor(conn) as cur:
+                # ========= CHANGED: Fixed ROUND() function =========
                 cur.execute("""
                     SELECT 
                         rule_text,
                         rule_type,
                         total_applications,
                         correct_predictions,
-                        ROUND((correct_predictions::float / total_applications * 100), 2) as accuracy
+                        ROUND(CAST(correct_predictions AS numeric) / CAST(total_applications AS numeric) * 100, 2) as accuracy
                     FROM rule_performance
                     WHERE total_applications > 0
                     ORDER BY accuracy DESC
                     LIMIT 30
                 """)
+                # ========= END CHANGED =========
                 
                 rules = []
                 for row in cur.fetchall():
@@ -654,6 +863,48 @@ async def get_rule_performance(x_user_id: Optional[str] = Header(None)):
         logger.exception(f"Rules error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# @router.get("/api/learning/rules")
+# async def get_rule_performance(x_user_id: Optional[str] = Header(None)):
+#     """Show how well each rule performs"""
+#     try:
+#         with get_db_connection() as conn:
+#             with get_db_cursor(conn) as cur:
+#                 cur.execute("""
+#                     SELECT 
+#                         rule_text,
+#                         rule_type,
+#                         total_applications,
+#                         correct_predictions,
+#                         ROUND((correct_predictions::float / total_applications * 100), 2) as accuracy
+#                     FROM rule_performance
+#                     WHERE total_applications > 0
+#                     ORDER BY accuracy DESC
+#                     LIMIT 30
+#                 """)
+                
+#                 rules = []
+#                 for row in cur.fetchall():
+#                     accuracy = float(row['accuracy'])
+#                     rules.append({
+#                         "rule": row['rule_text'][:100],
+#                         "type": row['rule_type'],
+#                         "times_applied": row['total_applications'],
+#                         "times_correct": row['correct_predictions'],
+#                         "accuracy_percentage": accuracy,
+#                         "reliability": "✅ Reliable" if accuracy > 80 else "⚠️ Needs review"
+#                     })
+                
+#                 return {
+#                     "status": "success",
+#                     "rules": rules,
+#                     "count": len(rules)
+#                 }
+    
+#     except Exception as e:
+#         logger.exception(f"Rules error: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
+
+
 
 @router.get("/api/learning/accuracy-trend")
 async def get_accuracy_trend(x_user_id: Optional[str] = Header(None)):
@@ -661,17 +912,19 @@ async def get_accuracy_trend(x_user_id: Optional[str] = Header(None)):
     try:
         with get_db_connection() as conn:
             with get_db_cursor(conn) as cur:
+                # ========= CHANGED: Fixed ROUND() function =========
                 cur.execute("""
                     SELECT 
                         DATE(f.created_at) as date,
                         COUNT(*) as total_feedback,
                         SUM(CASE WHEN f.correct_prediction THEN 1 ELSE 0 END) as correct,
-                        ROUND(SUM(CASE WHEN f.correct_prediction THEN 1 ELSE 0 END)::float / COUNT(*) * 100, 2) as accuracy
+                        ROUND(CAST(SUM(CASE WHEN f.correct_prediction THEN 1 ELSE 0 END) AS numeric) / CAST(COUNT(*) AS numeric) * 100, 2) as accuracy
                     FROM feedback f
                     WHERE f.created_at > NOW() - INTERVAL '30 days'
                     GROUP BY DATE(f.created_at)
                     ORDER BY date ASC
                 """)
+                # ========= END CHANGED =========
                 
                 trend = [
                     {
@@ -692,12 +945,56 @@ async def get_accuracy_trend(x_user_id: Optional[str] = Header(None)):
                     "accuracy_trend": trend,
                     "total_days": len(trend),
                     "improving": improving,
-                    "trend_status": "📈 Improving!" if improving else "📉 Needs work"
+                    "trend_status": "Improving!" if improving else " Needs work"
                 }
     
     except Exception as e:
         logger.exception(f"Trend error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# @router.get("/api/learning/accuracy-trend")
+# async def get_accuracy_trend(x_user_id: Optional[str] = Header(None)):
+#     """Show accuracy improvement over time"""
+#     try:
+#         with get_db_connection() as conn:
+#             with get_db_cursor(conn) as cur:
+#                 cur.execute("""
+#                     SELECT 
+#                         DATE(f.created_at) as date,
+#                         COUNT(*) as total_feedback,
+#                         SUM(CASE WHEN f.correct_prediction THEN 1 ELSE 0 END) as correct,
+#                         ROUND(SUM(CASE WHEN f.correct_prediction THEN 1 ELSE 0 END)::float / COUNT(*) * 100, 2) as accuracy
+#                     FROM feedback f
+#                     WHERE f.created_at > NOW() - INTERVAL '30 days'
+#                     GROUP BY DATE(f.created_at)
+#                     ORDER BY date ASC
+#                 """)
+                
+#                 trend = [
+#                     {
+#                         "date": row['date'].isoformat(),
+#                         "feedback_count": row['total_feedback'],
+#                         "correct_predictions": row['correct'],
+#                         "accuracy_percent": float(row['accuracy'])
+#                     }
+#                     for row in cur.fetchall()
+#                 ]
+                
+#                 improving = False
+#                 if len(trend) > 1:
+#                     improving = trend[-1]['accuracy_percent'] > trend[0]['accuracy_percent']
+                
+#                 return {
+#                     "status": "success",
+#                     "accuracy_trend": trend,
+#                     "total_days": len(trend),
+#                     "improving": improving,
+#                     "trend_status": " Improving!" if improving else " Needs work"
+#                 }
+    
+#     except Exception as e:
+#         logger.exception(f"Trend error: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ========= REBUILD VECTOR STORE =========

@@ -32,7 +32,7 @@ shutdown_event = asyncio.Event()
 
 def signal_handler(signum, frame):
     """Handle Ctrl+C gracefully"""
-    logger.info("⏹️ Ctrl+C detected - initiating graceful shutdown...")
+    logger.info("Ctrl+C detected - initiating graceful shutdown...")
     sys.exit(0)
 
 
@@ -45,20 +45,20 @@ async def lifespan(app: FastAPI):
     
     # Initialize database
     try:
-        logger.info("📦 Initializing database pool...")
+        logger.info("Initializing database pool...")
         init_db_pool()
         create_tables()
-        logger.info("✅ Database initialized")
+        logger.info(" Database initialized")
     except Exception as e:
         logger.warning(f"⚠️ Database init warning: {e}")
     
     # Initialize vector store
     try:
-        logger.info("📚 Initializing vector store...")
+        logger.info("Initializing vector store...")
         vectorstore_service.load_or_build()
-        logger.info("✅ Vector store ready")
+        logger.info("Vector store ready")
     except Exception as e:
-        logger.warning(f"⚠️ Vector store warning: {e}")
+        logger.warning(f" Vector store warning: {e}")
     
     logger.info("✅ Application ready on http://0.0.0.0:8000")
     
@@ -114,6 +114,13 @@ app.add_middleware(
 # Include API routes - IMPORTANT: routes already have /api prefix
 app.include_router(router)
 
+# print("=" * 80)
+# print("REGISTERED ROUTES:")
+# for route in app.routes:
+#     if hasattr(route, 'path') and hasattr(route, 'methods'):
+#         methods = ','.join(route.methods)
+#         print(f"  {methods:10} {route.path}")
+# print("=" * 80)
 
 # Global exception handler for unhandled exceptions
 @app.exception_handler(Exception)
@@ -199,7 +206,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(server.serve())
     except KeyboardInterrupt:
-        logger.info("⏹️ Server stopped by user")
+        logger.info(" Server stopped by user")
         sys.exit(0)
     except Exception as e:
         logger.exception(f"Server error: {e}")
