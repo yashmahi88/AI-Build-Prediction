@@ -208,7 +208,7 @@ async def chat_completions(
             logger.error(traceback.format_exc())
         # ========= END DATABASE SAVE =========
         
-        logger.info(f"📤 Returning prediction_id: {prediction_id}")
+        logger.info(f" Returning prediction_id: {prediction_id}")
         
         return {
             "id": f"chatcmpl-{prediction_id}",
@@ -237,63 +237,6 @@ async def chat_completions(
         if lock_acquired:
             await release_user_lock(user_id)
 
-
-# @router.post("/v1/chat/completions")
-# async def chat_completions(
-#     request: ChatRequest,
-#     http_request: Request,
-#     x_user_id: Optional[str] = Header(None)
-# ):
-#     """OpenAI-compatible chat completions with enhanced RAG analysis"""
-#     user_id = await get_user_id(http_request, x_user_id)
-#     prediction_id = str(uuid.uuid4())
-#     lock_acquired = False
-    
-#     if await check_user_request_limit(user_id):
-#         raise HTTPException(status_code=429, detail="Request in progress")
-    
-#     try:
-#         lock_acquired = await acquire_user_lock(user_id)
-        
-#         if not request.messages:
-#             raise HTTPException(status_code=400, detail="No messages provided")
-        
-#         user_message = request.messages[-1].get("content", "")
-#         if not user_message:
-#             raise HTTPException(status_code=400, detail="Empty message")
-        
-#         # Use enhanced analysis service
-#         enhanced_service = get_enhanced_analysis_service()
-#         result = await enhanced_service.comprehensive_analyze(user_message, user_id)
-        
-#         response_text = result.get('analysis', 'No analysis available')
-        
-#         return {
-#             "id": f"chatcmpl-{prediction_id}",
-#             "object": "chat.completion",
-#             "created": int(time.time()),
-#             "model": request.model,
-#             "prediction_id": prediction_id,
-#             "choices": [{
-#                 "index": 0,
-#                 "message": {"role": "assistant", "content": response_text},
-#                 "finish_reason": "stop"
-#             }],
-#             "usage": {
-#                 "prompt_tokens": len(user_message.split()),
-#                 "completion_tokens": len(response_text.split()),
-#                 "total_tokens": len(user_message.split()) + len(response_text.split())
-#             }
-#         }
-    
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         logger.exception(f"Chat error: {e}")
-#         raise HTTPException(status_code=500, detail=str(e))
-#     finally:
-#         if lock_acquired:
-#             await release_user_lock(user_id)
 
 
 # ========= COMPLETIONS (OpenAI Compatible) =========
@@ -490,94 +433,7 @@ async def submit_feedback(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# @router.post("/api/feedback/submit", response_model=FeedbackResponse)
-# async def submit_feedback(
-#     feedback: FeedbackRequest,
-#     x_user_id: Optional[str] = Header(None)
-# ):
-#     """Submit feedback on a prediction and learn from it"""
-#     user_id = x_user_id or "anonymous"
-    
-#     try:
-#         with get_db_connection() as conn:
-#             with get_db_cursor(conn) as cur:
-#                 # Get prediction details
-#                 cur.execute("""
-#                     SELECT predicted_result, rules_applied, confidence_score
-#                     FROM predictions WHERE id::text = %s
-#                 """, (feedback.prediction_id,))
-                
-#                 prediction = cur.fetchone()
-#                 if not prediction:
-#                     raise HTTPException(status_code=404, detail="Prediction not found")
-                
-#                 # Determine if prediction was correct
-#                 correct = (
-#                     (prediction['predicted_result'] == "PASS" and 
-#                      feedback.actual_build_result == "SUCCESS") or
-#                     (prediction['predicted_result'] == "FAIL" and 
-#                      feedback.actual_build_result == "FAILURE")
-#                 )
-                
-#                 # Convert to Python lists
-#                 missed = feedback.missed_issues if feedback.missed_issues else []
-#                 false_pos = feedback.false_positives if feedback.false_positives else []
-                
-#                 # Insert feedback
-#                 cur.execute("""
-#                     INSERT INTO feedback (
-#                         prediction_id, user_id, actual_build_result,
-#                         correct_prediction, corrected_confidence,
-#                         missed_issues, false_positives, user_comments,
-#                         feedback_type
-#                     ) VALUES (%s::uuid, %s, %s, %s, %s, %s, %s, %s, %s)
-#                     RETURNING id
-#                 """, (
-#                     feedback.prediction_id,
-#                     user_id,
-#                     feedback.actual_build_result,
-#                     correct,
-#                     feedback.corrected_confidence,
-#                     missed,
-#                     false_pos,
-#                     feedback.user_comments,
-#                     feedback.feedback_type or "manual"
-#                 ))
-                
-#                 feedback_id = cur.fetchone()['id']
-                
-#                 # Update prediction with feedback
-#                 cur.execute("""
-#                     UPDATE predictions
-#                     SET actual_result = %s, feedback_received_at = NOW()
-#                     WHERE id = %s::uuid
-#                 """, (feedback.actual_build_result, feedback.prediction_id))
-                
-#                 conn.commit()
-#                 logger.info(f"✅ Feedback {feedback_id} submitted")
-        
-#         # Learn from feedback asynchronously
-#         try:
-#             await learn_from_feedback_async(
-#                 str(feedback_id),
-#                 prediction['rules_applied'],
-#                 feedback,
-#                 correct
-#             )
-#         except Exception as e:
-#             logger.warning(f"⚠️ Learning error: {e}")
-        
-#         return {
-#             "status": "success",
-#             "feedback_id": str(feedback_id),
-#             "was_correct": correct
-#         }
-    
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         logger.exception(f"Feedback error: {e}")
-#         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 async def learn_from_feedback_async(

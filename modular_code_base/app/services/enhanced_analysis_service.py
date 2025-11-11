@@ -171,6 +171,12 @@ class EnhancedAnalysisService:
                     ai_suggestions
                 )
                 logger.info(f"[OK] Response built ({len(analysis_text)} chars)")
+                
+                # ========= ADD PATTERN ALERTS =========
+                analysis_text = self.add_pattern_alerts(pipeline_content, analysis_text)
+                logger.info("[OK] Pattern alerts added to analysis")
+                # ========= END ADD =========
+                
             except Exception as e:
                 logger.exception(f"[ERROR] Response error: {e}")
                 analysis_text = f"Error: {str(e)}"
@@ -184,7 +190,9 @@ class EnhancedAnalysisService:
                 'violated_rules': result.get('violated', 0),
                 'workspace_found': len(workspace_rules) > 0,
                 'total_rules': len(all_rules),
-                'vectorstore_docs_used': len(relevant_docs)
+                'vectorstore_docs_used': len(relevant_docs),
+                'all_rules': all_rules,
+                'stack': ['BitBake', 'Yocto', 'Jenkins', 'Bash']
             }
         
         except Exception as e:
@@ -200,9 +208,87 @@ class EnhancedAnalysisService:
                 'violated_rules': 0,
                 'workspace_found': False,
                 'total_rules': 0,
-                'vectorstore_docs_used': 0
+                'vectorstore_docs_used': 0,
+                'all_rules': [],
+                'stack': []
             }
     
+    def add_pattern_alerts(self, pipeline_content: str, analysis: str) -> str:
+        """Smart pattern matching with keyword extraction"""
+        alerts = []
+        
+        try:
+            from app.core.database import get_db_connection, get_db_cursor
+            import re
+            
+            # Common words to ignore
+            STOP_WORDS = {
+                'the', 'and', 'for', 'with', 'this', 'that', 'from', 'has', 
+                'are', 'was', 'been', 'have', 'had', 'will', 'can', 'should'
+            }
+            
+            with get_db_connection() as conn:
+                with get_db_cursor(conn) as cur:
+                    cur.execute("""
+                        SELECT pattern_text, pattern_type, occurrences
+                        FROM learned_patterns
+                        WHERE occurrences >= 1
+                        ORDER BY occurrences DESC
+                    """)
+                    
+                    for row in cur.fetchall():
+                        pattern_text = row['pattern_text']
+                        pipeline_lower = pipeline_content.lower()
+                        
+                        # Method 1: Exact match (fastest)
+                        if pattern_text.lower() in pipeline_lower:
+                            alerts.append({
+                                'text': pattern_text,
+                                'count': row['occurrences'],
+                                'confidence': 100
+                            })
+                            continue
+                        
+                        # Method 2: Keyword matching (for imperfect user input)
+                        keywords = [
+                            w.lower() for w in re.findall(r'\b[a-zA-Z0-9_-]{3,}\b', pattern_text)
+                            if w.lower() not in STOP_WORDS
+                        ]
+                        
+                        if keywords:
+                            matches = sum(1 for kw in keywords if kw in pipeline_lower)
+                            match_ratio = matches / len(keywords)
+                            
+                            # 50%+ keyword match = show alert
+                            if match_ratio >= 0.5:
+                                alerts.append({
+                                    'text': pattern_text,
+                                    'count': row['occurrences'],
+                                    'confidence': int(match_ratio * 100)
+                                })
+                                logger.info(
+                                    f"[PATTERN] Fuzzy match: {pattern_text[:40]} "
+                                    f"({matches}/{len(keywords)} keywords)"
+                                )
+        
+        except Exception as e:
+            logger.error(f"Pattern matching error: {e}")
+        
+        if alerts:
+            # Sort by confidence
+            alerts.sort(key=lambda x: (x['count'], x['confidence']), reverse=True)
+            
+            alert_lines = [
+                f"{alert['text']} (reported {alert['count']}x)"
+                for alert in alerts[:5]  # Top 5 matches
+            ]
+            
+            alert_section = "\n\n LEARNED PATTERN ALERTS:\n" + "\n".join(alert_lines)
+            return analysis + alert_section
+        
+        return analysis
+
+        
     def _evaluate_rules(self, rules: List[Dict], pipeline: str) -> Dict:
         """Evaluate rules against pipeline"""
         satisfied = 0
