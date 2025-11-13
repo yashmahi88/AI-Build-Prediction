@@ -15,7 +15,10 @@ def extractPrediction(text) {
 }
 
 @NonCPS
-def extractConfidence(text) { ((text =~ /CONFIDENCE:\s*(\d+)%/) ? (text =~ /CONFIDENCE:\s*(\d+)%/)[0][1] : '50') }
+def extractConfidence(text) { 
+    def match = text =~ /CONFIDENCE:\s*(\d+)%/
+    match ? match[0][1] : ''
+}
 
 def getPipelines() { Jenkins.instance.getAllItems(org.jenkinsci.plugins.workflow.job.WorkflowJob.class)*.fullName }
 
@@ -43,6 +46,8 @@ pipeline {
     environment {
         RAG_API_URL = "${params.RAG_API_URL}"
         AUTO_THRESHOLD = '80'
+        DISK_CRITICAL = '60'
+        DISK_OPTIMAL = '100'
     }
     options { skipDefaultCheckout(); timeout(time: 8, unit: 'HOURS'); timestamps(); buildDiscarder(logRotator(numToKeepStr: '50')) }
     
@@ -64,7 +69,11 @@ pipeline {
                     env.SCRIPT = getPipelineScript(env.TARGET)
                     env.BUILD_DIR = findBuildDir(env.SCRIPT)
                     env.DISK_GB = sh(script: "df -h '${env.BUILD_DIR}' 2>/dev/null | tail -1 | awk '{print \$4}' | sed 's/G//' || echo 50", returnStdout: true).trim()
-                    echo "→ ${env.BUILD_DIR} (${env.DISK_GB}GB)"
+                    
+                    def disk = env.DISK_GB.toInteger()
+                    if (disk < env.DISK_CRITICAL.toInteger()) error("✗ CRITICAL: ${disk}GB < ${env.DISK_CRITICAL}GB minimum required")
+                    env.DISK_OK = disk >= env.DISK_OPTIMAL.toInteger() ? 'true' : 'false'
+                    echo "→ ${env.BUILD_DIR} (${disk}GB - ${env.DISK_OK == 'true' ? 'OPTIMAL' : 'CAUTION'})"
                 }
             }
         }
@@ -73,11 +82,8 @@ pipeline {
             steps {
                 script {
                     env.PRED_ID = sh(script: 'uuidgen || cat /proc/sys/kernel/random/uuid', returnStdout: true).trim()
-                    
                     def query = "Analyze pipeline. Predict PASS/FAIL/HIGH-RISK with confidence %.\nDisk: ${env.DISK_GB}GB\nPipeline: ${env.TARGET}\n${env.SCRIPT}"
-                    def payload = groovy.json.JsonOutput.toJson([model: params.RAG_MODEL, stream: false, prediction_id: env.PRED_ID, messages: [[role: 'user', content: query]]])
-                    
-                    def resp = callAPI('/v1/chat/completions', payload)
+                    def resp = callAPI('/v1/chat/completions', groovy.json.JsonOutput.toJson([model: params.RAG_MODEL, stream: false, prediction_id: env.PRED_ID, messages: [[role: 'user', content: query]]]))
                     if (!resp.ok) error("API failed: HTTP ${resp.code}")
                     
                     def json = readJSON(text: resp.body)
@@ -90,8 +96,8 @@ pipeline {
                     archiveArtifacts artifacts: 'analysis.txt', allowEmptyArchive: true
                     
                     env.PRED = extractPrediction(analysis)
-                    env.CONF = extractConfidence(analysis)
-                    echo " ${env.PRED} @ ${env.CONF}%"
+                    env.CONF = extractConfidence(analysis) ?: '0'
+                    echo "→ ${env.PRED} @ ${env.CONF}%"
                 }
             }
         }
@@ -100,19 +106,26 @@ pipeline {
             steps {
                 script {
                     def conf = env.CONF.toInteger()
-                    if (env.PRED == 'PASS' && conf >= env.AUTO_THRESHOLD.toInteger()) {
+                    def autoApprove = env.PRED == 'PASS' && conf >= env.AUTO_THRESHOLD.toInteger() && env.DISK_OK == 'true'
+                    
+                    if (autoApprove) {
                         env.DECISION = 'AUTO'; env.APPROVER = 'System'
-                        echo " Auto-approved (${conf}% ≥ ${env.AUTO_THRESHOLD}%)"
+                        echo " Auto-approved: PASS @ ${conf}% + ${env.DISK_GB}GB"
                     } else {
-                        echo " ${env.PRED} @ ${conf}%"
+                        def reasons = []
+                        if (env.PRED != 'PASS') reasons << "Prediction=${env.PRED}"
+                        if (conf < env.AUTO_THRESHOLD.toInteger()) reasons << "Confidence=${conf}%<${env.AUTO_THRESHOLD}%"
+                        if (env.DISK_OK == 'false') reasons << "Disk=${env.DISK_GB}GB<${env.DISK_OPTIMAL}GB"
+                        echo " Manual approval: ${reasons.join(', ')}"
+                        
                         try {
                             timeout(time: 15, unit: 'MINUTES') {
-                                env.DECISION = input(message: "Proceed with ${env.PRED}?", ok: 'Yes', parameters: [choice(name: 'Trigger Analyzed Pipeline?', choices: ['Yes', 'No'])])
+                                env.DECISION = input(message: "Proceed? ${env.PRED}@${conf}% (${env.DISK_GB}GB)", ok: 'Yes', parameters: [choice(name: 'Decision', choices: ['Yes', 'No'])])
                                 env.APPROVER = 'Manual'
                             }
                             if (env.DECISION == 'No') { echo " Rejected"; currentBuild.result = 'ABORTED' }
                         } catch (e) {
-                            echo " Aborted/Timeout"
+                            echo " Timeout/Abort"
                             env.DECISION = 'ABORTED'; env.APPROVER = 'Timeout'; currentBuild.result = 'ABORTED'
                         }
                     }
@@ -129,12 +142,8 @@ pipeline {
                         if (params.WAIT_FOR_BUILD) {
                             env.RESULT = b.result; env.NUM = b.number.toString()
                             echo " Build #${env.NUM}: ${env.RESULT}"
-                        } else {
-                            env.RESULT = 'TRIGGERED'
-                        }
-                    } catch (Exception e) {
-                        echo " ${e.message}"; env.RESULT = 'ERROR'
-                    }
+                        } else { env.RESULT = 'TRIGGERED' }
+                    } catch (Exception e) { echo " ${e.message}"; env.RESULT = 'ERROR' }
                 }
             }
         }
@@ -145,26 +154,20 @@ pipeline {
                 script {
                     catchError(buildResult: currentBuild.result ?: 'SUCCESS', stageResult: 'SUCCESS') {
                         def banner = '=' * 80
-                        echo "\n${banner}\nFEEDBACK\n${banner}\n${env.PRED} @ ${env.CONF}%\n${env.RESULT ?: 'Not executed'}\n${banner}"
+                        echo "\n${banner}\nFEEDBACK\n${banner}\n${env.PRED}@${env.CONF}% | ${env.RESULT ?: 'Not executed'}\n${banner}"
                         try {
                             timeout(time: 30, unit: 'MINUTES') {
-                                if (input(message: 'Provide feedback?', ok: 'Yes', parameters: [choice(name: 'Provide Feedback?', choices: ['Yes', 'Skip'])]) == 'Yes') {
-                                    def params = [
-                                        string(name: 'CONF', defaultValue: ''), 
-                                        text(name: 'MISSED', defaultValue: ''),
-                                        text(name: 'FALSE', defaultValue: ''), 
-                                        text(name: 'COMMENTS', defaultValue: '')
-                                    ]
-                                    if (env.RESULT && env.RESULT != 'TRIGGERED') {
-                                        params.add(0, choice(name: 'ACTUAL', choices: ['SUCCESS', 'FAILURE']))
-                                    }
+                                if (input(message: 'Provide feedback?', ok: 'Yes', parameters: [choice(name: 'Provide Feedback', choices: ['Yes', 'Skip'])]) == 'Yes') {
+                                    def params = [string(name: 'CONF', defaultValue: ''), text(name: 'MISSED', defaultValue: ''), text(name: 'FALSE', defaultValue: ''), text(name: 'COMMENTS', defaultValue: '')]
+                                    if (env.RESULT && env.RESULT != 'TRIGGERED') params.add(0, choice(name: 'ACTUAL', choices: ['SUCCESS', 'FAILURE']))
+                                    
                                     def fb = input(message: 'Feedback', ok: 'Submit', parameters: params)
                                     if (fb.ACTUAL) env.ACTUAL = fb.ACTUAL
                                     if (fb.CONF?.trim()) env.CONF_CORR = fb.CONF.trim()
                                     if (fb.MISSED?.trim()) env.MISSED = fb.MISSED
                                     if (fb.FALSE?.trim()) env.FALSE = fb.FALSE
                                     if (fb.COMMENTS?.trim()) env.COMMENTS = fb.COMMENTS
-                                    echo " Feeback Collected"
+                                    echo "✓ Collected"
                                 }
                             }
                         } catch (e) { echo " Skipped" }
@@ -178,15 +181,15 @@ pipeline {
         always {
             script {
                 def banner = '=' * 80
-                echo "\n${banner}\nSUMMARY\n${banner}\n${env.TARGET}\n${env.PRED} @ ${env.CONF}%\n${env.DECISION ?: 'N/A'} by ${env.APPROVER ?: 'System'}\n${env.RESULT ? "Result: ${env.RESULT}" : ''}\nID: ${env.PRED_ID}\n${banner}"
+                echo "\n${banner}\nSUMMARY\n${banner}\n${env.TARGET}\n${env.PRED}@${env.CONF}% | ${env.DECISION ?: 'N/A'} by ${env.APPROVER ?: 'System'}\n${env.RESULT ? "Build: ${env.RESULT}" : ''} | Disk: ${env.DISK_GB}GB\nID: ${env.PRED_ID}\n${banner}"
                 
                 if (env.DECISION in ['AUTO', 'Yes', 'No'] && env.DECISION != 'ABORTED') {
                     def confVal = null
                     if (env.CONF_CORR?.trim()) {
-                        try { def c = env.CONF_CORR.trim().toInteger(); confVal = (c >= 0 && c <= 100) ? c : null } catch (e) {}
+                        try { confVal = env.CONF_CORR.trim().toInteger(); confVal = (confVal >= 0 && confVal <= 100) ? confVal : null } catch (e) {}
                     }
                     
-                    def payload = groovy.json.JsonOutput.toJson([
+                    def resp = callAPI('/api/feedback/submit', groovy.json.JsonOutput.toJson([
                         prediction_id: env.PRED_ID,
                         actual_build_result: env.ACTUAL ?: (env.RESULT ?: 'NOT_EXECUTED'),
                         corrected_confidence: confVal,
@@ -194,9 +197,7 @@ pipeline {
                         false_positives: parseList(env.FALSE ?: ''),
                         user_comments: env.COMMENTS ?: (env.DECISION == 'No' ? 'User rejected' : 'Auto'),
                         feedback_type: (env.ACTUAL || env.COMMENTS || env.CONF_CORR) ? 'manual' : 'automatic'
-                    ])
-                    
-                    def resp = callAPI('/api/feedback/submit', payload)
+                    ]))
                     echo resp.ok ? "✓ Feedback sent" : " Failed (HTTP ${resp.code})"
                 }
                 sh 'rm -f api.json analysis.txt 2>/dev/null || true'
