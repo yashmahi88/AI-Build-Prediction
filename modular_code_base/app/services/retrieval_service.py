@@ -16,13 +16,13 @@ class RetrievalService:
     def retrieve_relevant_documents(self, query: str, k: int = 20) -> List[Document]:
         """Retrieve documents relevant to query"""
         
-        # ✅ CHECK IF VECTORSTORE IS LOADED
+        #  CHECK IF VECTORSTORE IS LOADED
         if not self.vectorstore_service.is_loaded():
-            logger.warning("⚠️ Vectorstore not loaded")
+            logger.warning(" Vectorstore not loaded")
             return []
         
         try:
-            logger.info(f"📚 Retrieving {k} documents for query...")
+            logger.info(f" Retrieving {k} documents for query...")
             docs = self.vectorstore_service.search(query, k=k)
             logger.info(f"✅ Retrieved {len(docs)} documents")
             
@@ -34,7 +34,7 @@ class RetrievalService:
                 # Add source metadata if missing
                 if 'source' not in doc.metadata:
                     doc.metadata['source'] = f'Vectorstore-Doc-{i}'
-                    doc.metadata['confluence_url'] = f'https://docs.example.com/doc-{i}'
+                    doc.metadata['confluence_url'] = f''
             
             return docs
         

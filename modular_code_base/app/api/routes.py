@@ -370,7 +370,7 @@ async def submit_feedback(
                     (predicted == "PASS" and actual == "SUCCESS") or
                     (predicted == "FAIL" and actual == "FAILURE")
                 )
-                # ========= END CHANGED =========
+                
                 
                 # Convert to Python lists
                 missed = feedback.missed_issues if feedback.missed_issues else []
@@ -418,7 +418,7 @@ async def submit_feedback(
                 correct
             )
         except Exception as e:
-            logger.warning(f"⚠️ Learning error: {e}")
+            logger.warning(f" Learning error: {e}")
         
         return {
             "status": "success",

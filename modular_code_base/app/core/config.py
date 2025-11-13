@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     db_port: int = 5432
     db_name: str = "rag_feedback"
     db_user: str = "rag_user"
-    db_password: str = "password"
+    db_password: str = ""
     
     # Feature Flags
     force_rebuild_on_startup: bool = False

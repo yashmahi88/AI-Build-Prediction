@@ -18,10 +18,9 @@ class VectorStoreService:
         self.vectorstore = None
         self.embeddings = None
         
-        logger.info(f"🔧 Initializing VectorStoreService with path: {vector_store_path}")
+        logger.info(f"Initializing VectorStoreService with path: {vector_store_path}")
         
         try:
-            # ✅ INITIALIZE EMBEDDINGS
             self.embeddings = OllamaEmbeddings(
                 base_url="http://localhost:11434",
                 model="nomic-embed-text"
@@ -31,13 +30,12 @@ class VectorStoreService:
             logger.error(f"❌ Failed to initialize embeddings: {e}")
             self.embeddings = None
         
-        # ✅ LOAD VECTORSTORE ON INIT
         self._load_vectorstore()
     
     def _load_vectorstore(self):
         """Automatically load vectorstore if it exists"""
         if self._exists():
-            logger.info(f"📂 Vectorstore found at: {self.vector_store_path}")
+            logger.info(f"Vectorstore found at: {self.vector_store_path}")
             try:
                 self.load()
                 logger.info("✅ Vectorstore loaded successfully")
@@ -45,8 +43,8 @@ class VectorStoreService:
                 logger.error(f"❌ Failed to load vectorstore: {e}")
                 self.vectorstore = None
         else:
-            logger.warning(f"⚠️ Vectorstore not found at: {self.vector_store_path}")
-            logger.warning("   First documents added will create the vectorstore")
+            logger.warning(f"Vectorstore not found at: {self.vector_store_path}")
+            logger.warning("First documents added will create the vectorstore")
     
     def _exists(self) -> bool:
         """Check if vector store exists"""
@@ -61,7 +59,7 @@ class VectorStoreService:
             return None
         
         try:
-            logger.info(f"📚 Loading vectorstore from: {self.vector_store_path}")
+            logger.info(f"Loading vectorstore from: {self.vector_store_path}")
             self.vectorstore = FAISS.load_local(
                 self.vector_store_path,
                 self.embeddings,
@@ -74,10 +72,52 @@ class VectorStoreService:
             self.vectorstore = None
             return None
     
+    def load_or_build(self, force_rebuild: bool = False):
+        """Load existing vectorstore or build new one - ADDED METHOD"""
+        if force_rebuild:
+            logger.info("Force rebuild requested - clearing vectorstore")
+            self.vectorstore = None
+            
+            # Rebuild from MinIO
+            try:
+                from app.services.minio_service import MinIOService
+                from app.services.document_processor import DocumentProcessor
+                
+                minio_service = MinIOService()
+                doc_processor = DocumentProcessor()
+                
+                # Get files from MinIO
+                files = minio_service.list_files()
+                documents = []
+                
+                for file in files:
+                    content = minio_service.get_file_content(file['Key'])
+                    if content:
+                        docs = doc_processor.process_text(
+                            content,
+                            metadata={'source': file['Key']}
+                        )
+                        documents.extend(docs)
+                
+                if documents:
+                    logger.info(f"Building vectorstore with {len(documents)} documents")
+                    self.build(documents)
+                else:
+                    logger.warning("No documents to build vectorstore")
+                    
+            except Exception as e:
+                logger.error(f"❌ Error rebuilding vectorstore: {e}")
+        else:
+            # Normal load
+            if not self._exists():
+                logger.warning("Vectorstore doesn't exist yet")
+            elif self.vectorstore is None:
+                self._load_vectorstore()
+    
     def build(self, documents: List[Document]) -> Optional[FAISS]:
         """Build new vector store from documents"""
         if not documents:
-            logger.warning("⚠️ No documents provided to build vectorstore")
+            logger.warning("No documents provided to build vectorstore")
             return None
         
         if self.embeddings is None:
@@ -85,7 +125,7 @@ class VectorStoreService:
             return None
         
         try:
-            logger.info(f"🏗️ Building new vectorstore with {len(documents)} documents")
+            logger.info(f"Building new vectorstore with {len(documents)} documents")
             self.vectorstore = FAISS.from_documents(documents, self.embeddings)
             self.save()
             logger.info(f"✅ Built and saved vector store with {len(documents)} documents")
@@ -98,7 +138,7 @@ class VectorStoreService:
     def save(self):
         """Persist vector store to disk"""
         if self.vectorstore is None:
-            logger.warning("⚠️ No vectorstore to save")
+            logger.warning("No vectorstore to save")
             return
         
         try:
@@ -111,7 +151,7 @@ class VectorStoreService:
     def add_documents(self, documents: List[Document]) -> bool:
         """Add documents to existing vector store or create new one"""
         if not documents:
-            logger.warning("⚠️ No documents to add")
+            logger.warning("No documents to add")
             return False
         
         if self.embeddings is None:
@@ -120,12 +160,10 @@ class VectorStoreService:
         
         try:
             if self.vectorstore is None:
-                # Create new vectorstore
-                logger.info(f"🆕 Creating new vectorstore with {len(documents)} documents")
+                logger.info(f"Creating new vectorstore with {len(documents)} documents")
                 self.vectorstore = FAISS.from_documents(documents, self.embeddings)
             else:
-                # Add to existing
-                logger.info(f"➕ Adding {len(documents)} documents to existing vectorstore")
+                logger.info(f"Adding {len(documents)} documents to existing vectorstore")
                 self.vectorstore.add_documents(documents)
             
             self.save()
@@ -138,11 +176,11 @@ class VectorStoreService:
     def search(self, query: str, k: int = 20) -> List[Document]:
         """Search vectorstore by similarity"""
         if self.vectorstore is None:
-            logger.warning("⚠️ Vectorstore not loaded - cannot search")
+            logger.warning("Vectorstore not loaded - cannot search")
             return []
         
         try:
-            logger.debug(f"🔍 Searching vectorstore for: {query[:50]}...")
+            logger.debug(f"Searching vectorstore for: {query[:50]}...")
             results = self.vectorstore.similarity_search(query, k=k)
             logger.info(f"✅ Found {len(results)} matching documents")
             return results
