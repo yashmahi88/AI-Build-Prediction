@@ -41,7 +41,7 @@ def callAPI(endpoint, payload) {   // to call the AI API for prediction or feedb
 pipeline {
     agent any
     parameters {
-        choice(name: 'RAG_MODEL', choices: ['codellama:7b','mistral:7b-instruct-q4_0','qwen2.5:1.5b'])   // which AI model to use for prediction
+        // choice(name: 'RAG_MODEL', choices: ['codellama:7b','mistral:7b-instruct-q4_0','qwen2.5:1.5b'])   // which AI model to use for prediction
         string(name: 'RAG_API_URL', defaultValue: 'http://localhost:8000')  // url where AI service is running
         booleanParam(name: 'WAIT_FOR_BUILD', defaultValue: true, description: 'Wait for build completion') // wait for build to finish before asking for feedback
     }
@@ -85,7 +85,7 @@ pipeline {
                 script {
                     env.PRED_ID = sh(script: 'uuidgen || cat /proc/sys/kernel/random/uuid', returnStdout: true).trim()  //generate unique id to store prediction
                     def query = "Analyze pipeline. Predict PASS/FAIL/HIGH-RISK with confidence %.\nDisk: ${env.DISK_GB}GB\nPipeline: ${env.TARGET}\n${env.SCRIPT}"  // que for AI 
-                    def resp = callAPI('/v1/chat/completions', groovy.json.JsonOutput.toJson([model: params.RAG_MODEL, stream: false, prediction_id: env.PRED_ID, messages: [[role: 'user', content: query]]])) //cal AI API
+                    def resp = callAPI('/v1/chat/completions', groovy.json.JsonOutput.toJson([stream: false, prediction_id: env.PRED_ID, messages: [[role: 'user', content: query]]])) //cal AI API
                     if (!resp.ok) error("API failed: HTTP ${resp.code}")  //check if AI failed or succeeded
                     
                     def json = readJSON(text: resp.body)  //parse AI response
