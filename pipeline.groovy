@@ -41,7 +41,7 @@ def callAPI(endpoint, payload) {   // to call the AI API for prediction or feedb
 pipeline {
     agent any
     parameters {
-        choice(name: 'RAG_MODEL', choices: ['codellama:7b','mistral:7b-instruct-q4_0'])   // which AI model to use for prediction
+        choice(name: 'RAG_MODEL', choices: ['codellama:7b','mistral:7b-instruct-q4_0','qwen2.5:1.5b'])   // which AI model to use for prediction
         string(name: 'RAG_API_URL', defaultValue: 'http://localhost:8000')  // url where AI service is running
         booleanParam(name: 'WAIT_FOR_BUILD', defaultValue: true, description: 'Wait for build completion') // wait for build to finish before asking for feedback
     }
