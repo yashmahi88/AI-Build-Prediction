@@ -299,7 +299,7 @@ async def ollama_generate(
         lock_acquired = await acquire_user_lock(user_id)
         
         prompt = request.get("prompt", "")
-        model = request.get("model", "codellama:7b")
+        model = request.get("model", "qwen2.5:1.5b")  ##"codellama:7b" ##"mistral:7b-instruct-q4_0"
         
         if not prompt:
             raise HTTPException(status_code=400, detail="No prompt provided")
@@ -857,20 +857,48 @@ async def get_accuracy_trend(x_user_id: Optional[str] = Header(None)):
 
 @router.post("/api/rebuild")
 async def rebuild_vectorstore(x_user_id: Optional[str] = Header(None)):
-    """Force rebuild of vector store"""
+    """Force rebuild/reload of vector store"""
     try:
+        logger.info(" Reloading vectorstore...")
+        
+        # Get fresh instance and reload
         vectorstore_service = get_vectorstore_service()
-        vectorstore_service.load_or_build()
+        
+        # Force reload from disk
+        if vectorstore_service._exists():
+            vectorstore_service.load()
+            logger.info(" Vectorstore reloaded from disk")
+        else:
+            logger.warning(" Vectorstore not found, building new one")
+            vectorstore_service.load_or_build(force_rebuild=True)
         
         return {
             "status": "success",
-            "message": "Vector store rebuilt",
-            "timestamp": datetime.now().isoformat()
+            "message": "Vector store reloaded",
+            "timestamp": datetime.now().isoformat(),
+            "vectorstore_loaded": vectorstore_service.is_loaded()
         }
     
     except Exception as e:
-        logger.exception(f"Rebuild error: {e}")
+        logger.exception(f"❌ Reload error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# @router.post("/api/rebuild")
+# async def rebuild_vectorstore(x_user_id: Optional[str] = Header(None)):
+#     """Force rebuild of vector store"""
+#     try:
+#         vectorstore_service = get_vectorstore_service()
+#         vectorstore_service.load_or_build()
+        
+#         return {
+#             "status": "success",
+#             "message": "Vector store rebuilt",
+#             "timestamp": datetime.now().isoformat()
+#         }
+    
+#     except Exception as e:
+#         logger.exception(f"Rebuild error: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ========= STATUS ENDPOINT =========

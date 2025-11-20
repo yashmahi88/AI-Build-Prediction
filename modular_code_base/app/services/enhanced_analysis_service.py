@@ -46,7 +46,7 @@ class EnhancedAnalysisService:
             relevant_docs = []
             try:
                 logger.debug("[RETRIEVE] Retrieving documents from vectorstore...")
-                relevant_docs = self.retrieval_service.retrieve_relevant_documents(pipeline_content, k=20)
+                relevant_docs = self.retrieval_service.retrieve_relevant_documents(pipeline_content, k=10)
                 logger.info(f"[OK] Retrieved {len(relevant_docs)} documents")
             except Exception as e:
                 logger.exception(f"[ERROR] Error retrieving documents: {e}")
@@ -423,7 +423,7 @@ AI-GENERATED SUGGESTIONS TO IMPROVE CONFIDENCE:
                                 
                                 if unique_key not in seen_sources:
                                     seen_sources.add(unique_key)
-                                    jenkins_url = f"http://localhost:8080/job/{job}/{build}"
+                                    jenkins_url = f"{job}/{build}"
                                     sources_list.append(f"{source_count}. Jenkins: {job} #{build} - {jenkins_url}")
                                     source_count += 1
                 except Exception as e:

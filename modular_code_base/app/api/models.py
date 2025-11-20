@@ -7,13 +7,13 @@ class AnalyzeRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list
-    model: str = "codellama:7b"
+    model: str = "qwen2.5:1.5b" ##"mistral:7b-instruct-q4_0" ##"codellama:7b"
     temperature: float = 0.4
     max_tokens: int = 2000
 
 class CompletionRequest(BaseModel):
     prompt: str
-    model: str = "codellama:7b"
+    model: str = "qwen2.5:1.5b"##"mistral:7b-instruct-q4_0" ##"codellama:7b"
     temperature: float = 0.4
     max_tokens: int = 2000
 

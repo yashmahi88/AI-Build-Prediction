@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     
     # Ollama Configuration
     ollama_base_url: str = "http://localhost:11434"
-    ollama_llm_model: str = "codellama:7b"
+    ollama_llm_model: str = "qwen2.5:1.5b" ##"mistral:7b-instruct-q4_0" ##"codellama:7b"
     ollama_embedding_model: str = "nomic-embed-text"
     
     # Paths

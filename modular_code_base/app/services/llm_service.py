@@ -17,7 +17,7 @@ class LLMService:
     def __init__(self):
         try:
             self.llm = OllamaLLM(
-                model="codellama:7b",
+                model= "qwen2.5:1.5b", ##"mistral:7b-instruct-q4_0", ##"codellama:7b", ##"codegemma:2b", ##"qwen3-coder:480b-cloud",
                 base_url="http://localhost:11434",
                 temperature=0.1,
                 timeout=180
@@ -341,7 +341,7 @@ Be specific. Include real file paths. Provide complete code. Make it actionable.
   FILE: conf/local.conf
   CHANGE: Add appropriate configuration
   CODE: # Update local.conf with needed settings
-  (+12% confidence)"""
+  """
             
             suggestions.append(suggestion)
         
