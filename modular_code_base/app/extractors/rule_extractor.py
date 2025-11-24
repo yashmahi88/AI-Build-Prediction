@@ -99,10 +99,10 @@ class RuleExtractor:
         
         current_section = ""
         section_patterns = [
-            r'^#+\s+(.+)$',
-            r'^(.+):$',
-            r'^\d+\.\s+(.+)$',
-            r'^[A-Z\s]+$'
+            r'^#+\s+(.+)$',    # Markdown headers like # Section
+            r'^(.+):$',    # Lines ending with colon, e.g., "Requirements:"
+            r'^\d+\.\s+(.+)$',  # Numbered headings like "1. Introduction"
+            r'^[A-Z\s]+$'   # ALL CAPS lines often indicating section titles
         ]
         
         requirement_keywords = [

@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class EnhancedAnalysisService:
-    """Advanced RAG analysis - WORKING CODE FROM YOUR ORIGINAL"""
+    """Advanced RAG analysis"""
     
     def __init__(self):
         try:
@@ -37,7 +37,7 @@ class EnhancedAnalysisService:
             raise
     
     async def comprehensive_analyze(self, pipeline_content: str, user_id: str = None) -> Dict:
-        """Full analysis - EXACTLY like your working code"""
+        """Full analysis """
         
         try:
             logger.info(f"[ANALYSIS] Starting comprehensive analysis for user: {user_id}")
@@ -51,7 +51,7 @@ class EnhancedAnalysisService:
             except Exception as e:
                 logger.exception(f"[ERROR] Error retrieving documents: {e}")
             
-            # Step 2: Extract rules from EACH document using extract_all_rules() - the ONLY method that works
+            # Step 2: Extract rules from EACH document using extract_all_rules() 
             vectorstore_rules = []
             for doc in relevant_docs:
                 try:
@@ -357,7 +357,7 @@ class EnhancedAnalysisService:
     def _build_comprehensive_response(self, pipeline, rules, result, docs, workspace_rules, prediction, ai_suggestions=None) -> str:
         """Build response"""
         
-        response = f"""DETECTED_STACK: BitBake, Yocto, Jenkins, Bash
+        response = f"""
 
 ESTABLISHED_RULES:
 """
