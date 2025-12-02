@@ -84,7 +84,7 @@ pipeline {
         stage('Analyze') {
             steps {
                 script {
-                    env.PRED_ID = sh(script: 'uuidgen || cat /proc/sys/kernel/random/uuid', returnStdout: true).trim() // Random prediction ID
+                    env.PRED_ID = sh(script: 'uuidgen || cat /proc/sys/kernel/random/uuid', returnStdout: true).trim() // Generate random prediction ID
                     def query = """Analyze this Yocto/Jenkins pipeline for build success prediction:
 Disk: ${env.DISK_GB}GB available
 Target: ${env.TARGET}
