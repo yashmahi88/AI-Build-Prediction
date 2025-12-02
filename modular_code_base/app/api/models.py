@@ -4,12 +4,13 @@ from typing import List, Optional, Dict
 # Request Models
 class AnalyzeRequest(BaseModel):
     pipeline_content: str
-
+    job_name: Optional[str] = None 
 class ChatRequest(BaseModel):
     messages: list
     model: str = "qwen2.5:1.5b" ##"mistral:7b-instruct-q4_0" ##"codellama:7b"
     temperature: float = 0.4
     max_tokens: int = 2000
+    job_name: Optional[str] = None
 
 class CompletionRequest(BaseModel):
     prompt: str

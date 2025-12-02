@@ -128,6 +128,7 @@ def create_tables():
         print(f"⚠️  Error creating tables: {e}")
         return False
 
+
 def close_db_pool():
     """Close all database connections"""
     global connection_pool

@@ -7,17 +7,23 @@ from app.services.workspace_analysis_service import WorkspaceAnalysisService
 from app.services.retrieval_service import RetrievalService
 from app.services.vectorstore_service import VectorStoreService
 from app.extractors.rule_extractor import RuleExtractor
+from app.core.config import get_settings
 
 
 logger = logging.getLogger(__name__)
 
 
 class EnhancedAnalysisService:
-    """Advanced RAG analysis"""
+    """Advanced RAG analysis with configurable prediction logic"""
     
     def __init__(self):
         try:
             logger.debug("[INIT] Initializing EnhancedAnalysisService...")
+            
+            # Load settings for configurable thresholds
+            self.settings = get_settings()
+            logger.debug("[OK] Settings loaded")
+            
             self.rule_extractor = RuleExtractor()
             logger.debug("[OK] RuleExtractor initialized")
             
@@ -37,7 +43,7 @@ class EnhancedAnalysisService:
             raise
     
     async def comprehensive_analyze(self, pipeline_content: str, user_id: str = None) -> Dict:
-        """Full analysis """
+        """Full analysis"""
         
         try:
             logger.info(f"[ANALYSIS] Starting comprehensive analysis for user: {user_id}")
@@ -99,7 +105,7 @@ class EnhancedAnalysisService:
             except Exception as e:
                 logger.exception(f"[ERROR] Evaluation error: {e}")
             
-            # Step 6: Make prediction
+            # Step 6: Make prediction using configurable thresholds
             prediction = {'outcome': 'UNKNOWN', 'confidence': 50}
             try:
                 prediction = self._make_prediction(result, len(all_rules))
@@ -172,10 +178,9 @@ class EnhancedAnalysisService:
                 )
                 logger.info(f"[OK] Response built ({len(analysis_text)} chars)")
                 
-                # ========= ADD PATTERN ALERTS =========
+                # Add pattern alerts from learned feedback
                 analysis_text = self.add_pattern_alerts(pipeline_content, analysis_text)
                 logger.info("[OK] Pattern alerts added to analysis")
-                # ========= END ADD =========
                 
             except Exception as e:
                 logger.exception(f"[ERROR] Response error: {e}")
@@ -214,14 +219,14 @@ class EnhancedAnalysisService:
             }
     
     def add_pattern_alerts(self, pipeline_content: str, analysis: str) -> str:
-        """Smart pattern matching with keyword extraction"""
+        """Smart pattern matching with keyword extraction from learned feedback"""
         alerts = []
         
         try:
             from app.core.database import get_db_connection, get_db_cursor
             import re
             
-            # Common words to ignore
+            # Common words to ignore in keyword matching
             STOP_WORDS = {
                 'the', 'and', 'for', 'with', 'this', 'that', 'from', 'has', 
                 'are', 'was', 'been', 'have', 'had', 'will', 'can', 'should'
@@ -275,22 +280,21 @@ class EnhancedAnalysisService:
             logger.error(f"Pattern matching error: {e}")
         
         if alerts:
-            # Sort by confidence
+            # Sort by confidence and occurrence count
             alerts.sort(key=lambda x: (x['count'], x['confidence']), reverse=True)
             
             alert_lines = [
-                f"{alert['text']} (reported {alert['count']}x)"
+                f"  WARNING: {alert['text']} (reported {alert['count']}x)"
                 for alert in alerts[:5]  # Top 5 matches
             ]
             
-            alert_section = "\n\n LEARNED PATTERN ALERTS:\n" + "\n".join(alert_lines)
+            alert_section = "\n\nLEARNED PATTERN ALERTS:\n" + "\n".join(alert_lines)
             return analysis + alert_section
         
         return analysis
-
-        
+    
     def _evaluate_rules(self, rules: List[Dict], pipeline: str) -> Dict:
-        """Evaluate rules against pipeline"""
+        """Evaluate rules against pipeline content"""
         satisfied = 0
         violated = 0
         violations = []
@@ -310,88 +314,148 @@ class EnhancedAnalysisService:
         }
     
     def _rule_satisfied(self, rule: str, pipeline: str) -> bool:
-        """Check if rule is satisfied"""
+        """
+        Check if rule is satisfied using configurable keyword threshold
+        
+        Args:
+            rule: Rule text to check
+            pipeline: Pipeline content to check against
+        
+        Returns:
+            bool: True if rule is satisfied based on keyword matching
+        """
         if not rule or not pipeline:
             return False
         
         rule_lower = rule.lower()
         pipeline_lower = pipeline.lower()
         
+        # Extract key terms (3+ character words)
         key_terms = re.findall(r'\b[a-z]{3,}\b', rule_lower)
         
         if not key_terms:
             return False
         
+        # Count how many key terms appear in pipeline
         matches = sum(1 for term in key_terms if term in pipeline_lower)
-        return matches / len(key_terms) >= 0.6
+        match_ratio = matches / len(key_terms)
+        
+        # Use configurable threshold from settings
+        threshold = self.settings.rule_satisfaction_keyword_threshold
+        is_satisfied = match_ratio >= threshold
+        
+        logger.debug(
+            f"[RULE] '{rule[:50]}...' match ratio: {match_ratio:.2%} "
+            f"(threshold: {threshold:.0%}) = {'SATISFIED' if is_satisfied else 'VIOLATED'}"
+        )
+        
+        return is_satisfied
     
     def _make_prediction(self, result: Dict, total_rules: int) -> Dict:
-        """Make prediction"""
+        """
+        Make prediction based on RAW confidence 
+        Outcome determined by confidence value
+        
+        Args:
+            result: Evaluation results with satisfied/violated counts
+            total_rules: Total number of rules evaluated
+        
+        Returns:
+            Dict with 'outcome' and 'confidence' (0-100)
+        """
+        
+        # Handle no rules case
         if total_rules == 0:
-            return {'outcome': 'UNKNOWN', 'confidence': 50}
+            if self.settings.prediction_unknown_on_no_rules:
+                logger.warning("[PREDICTION] No rules found - returning UNKNOWN")
+                return {'outcome': 'UNKNOWN', 'confidence': 50}
+            else:
+                logger.warning("[PREDICTION] No rules found - defaulting to PASS")
+                return {'outcome': 'PASS', 'confidence': 70}
         
         satisfied = result.get('satisfied', 0)
         violated = result.get('violated', 0)
         
+        # Calculate satisfaction ratio (internal only)
         satisfaction_ratio = satisfied / total_rules
         violation_ratio = violated / total_rules
         
-        base_confidence = int(satisfaction_ratio * 100)
-        
-        if violation_ratio >= 0.5:
-            return {
-                'outcome': 'FAIL',
-                'confidence': max(30, 100 - base_confidence)
-            }
-        elif violation_ratio >= 0.3:
-            return {
-                'outcome': 'HIGH_RISK',
-                'confidence': max(55, min(75, base_confidence))
-            }
+        # Calculate confidence from satisfaction
+        # More satisfied rules = higher confidence
+        if violation_ratio < self.settings.prediction_high_risk_violation_threshold:
+            # Low violations: boost confidence
+            confidence = int(satisfaction_ratio * 100) + self.settings.prediction_pass_confidence_boost
+            confidence = min(100, confidence)
         else:
-            return {
-                'outcome': 'PASS',
-                'confidence': min(95, base_confidence + 10)
-            }
+            # Moderate to high violations: raw satisfaction
+            confidence = int(satisfaction_ratio * 100)
+        
+        # Determine outcome based on confidence ranges
+        if confidence <= self.settings.prediction_fail_max:
+            outcome = 'FAIL'
+        elif confidence <= self.settings.prediction_high_risk_max:
+            outcome = 'HIGH_RISK'
+        else:
+            outcome = 'PASS'
+        
+        logger.info(f"[PREDICTION] {outcome} @ {confidence}%")
+        
+        return {
+            'outcome': outcome,
+            'confidence': confidence
+        }
+
     
     def _build_comprehensive_response(self, pipeline, rules, result, docs, workspace_rules, prediction, ai_suggestions=None) -> str:
-        """Build response"""
+        """Build comprehensive analysis response with all findings"""
         
         response = f"""
 
-ESTABLISHED_RULES:
+ESTABLISHED RULES ANALYSIS:
+{'='*70}
 """
         
-        for rule in rules[:50]:
+        # Show first 50 rules with their status
+        for i, rule in enumerate(rules[:50], 1):
             rule_text = rule.get('rule_text', '')[:100] if isinstance(rule, dict) else str(rule)[:100]
             status = "PASS" if self._rule_satisfied(rule_text, pipeline) else "FAIL"
-            response += f"* {rule_text}... - {status}\n"
+            response += f"{i}. {rule_text}... - {status}\n"
         
+        # Show workspace-specific findings
         if workspace_rules:
-            response += f"\nREAL YOCTO WORKSPACE ANALYSIS:\nFound {len(workspace_rules)} specific rules from actual Yocto files\n"
+            response += f"\nREAL YOCTO WORKSPACE ANALYSIS:\n"
+            response += f"Found {len(workspace_rules)} specific rules from actual Yocto files in your workspace\n"
             for r in workspace_rules[:10]:
                 rule_text = r.get('rule_text', '') if isinstance(r, dict) else str(r)
-                response += f"* {rule_text}\n"
+                response += f"  * {rule_text}\n"
         
+        # Summary statistics
         response += f"""
+{'='*70}
+ANALYSIS SUMMARY:
+{'='*70}
 APPLICABLE_RULES: {len(rules)}
 SATISFIED_RULES: {result.get('satisfied', 0)}
 VIOLATED_RULES: {result.get('violated', 0)}
 
-BUILD_PREDICTION: {prediction['outcome']}
+{'='*70}
+BUILD PREDICTION: {prediction['outcome']}
 CONFIDENCE: {prediction['confidence']}%
+{'='*70}
 
 AI-GENERATED SUGGESTIONS TO IMPROVE CONFIDENCE:
 """
         
+        # Add AI suggestions
         if ai_suggestions and len(ai_suggestions) > 0:
-            logger.info(f"[BUILD] Adding {len(ai_suggestions)} suggestions")
+            logger.info(f"[BUILD] Adding {len(ai_suggestions)} AI suggestions")
             for i, suggestion in enumerate(ai_suggestions, 1):
                 response += f"{i}. {suggestion}\n"
         else:
-            logger.warning("[WARN] No AI suggestions")
-            response += "No AI suggestions generated in this analysis.\n"
+            logger.warning("[WARN] No AI suggestions generated")
+            response += "No specific suggestions generated for this analysis.\n"
         
+        # Add sources section
         response += "\n" + "="*70 + "\nSOURCES & REFERENCES:\n" + "="*70 + "\n"
         
         seen_sources = set()
@@ -403,6 +467,7 @@ AI-GENERATED SUGGESTIONS TO IMPROVE CONFIDENCE:
             for doc in docs[:20]:
                 try:
                     if hasattr(doc, 'metadata') and doc.metadata:
+                        # Confluence sources
                         confluence_url = doc.metadata.get('confluence_url', '')
                         if confluence_url:
                             source = doc.metadata.get('source', 'Confluence')
@@ -411,9 +476,10 @@ AI-GENERATED SUGGESTIONS TO IMPROVE CONFIDENCE:
                             if unique_key not in seen_sources:
                                 seen_sources.add(unique_key)
                                 page_name = source.split('/')[-1].replace('.md', '').replace('_', ' ') if '/' in source else 'Confluence'
-                                sources_list.append(f"{source_count}. {page_name} - {confluence_url}")
+                                sources_list.append(f"{source_count}. Confluence: {page_name} - {confluence_url}")
                                 source_count += 1
                         
+                        # Jenkins sources
                         source = doc.metadata.get('source', '')
                         if 'jenkins' in str(source).lower():
                             match = re.search(r'([a-zA-Z0-9_-]+)-(\d+)', str(source))
@@ -435,7 +501,7 @@ AI-GENERATED SUGGESTIONS TO IMPROVE CONFIDENCE:
                 response += f"{source}\n"
         else:
             logger.warning("[WARN] No sources found")
-            response += "No sources retrieved.\n"
+            response += "No specific sources retrieved for this analysis.\n"
         
         response += "="*70 + "\n"
         

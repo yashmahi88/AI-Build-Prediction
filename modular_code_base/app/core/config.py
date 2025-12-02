@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings
 from functools import lru_cache
 from typing import Optional
 
+
 class Settings(BaseSettings):
     """Application configuration from environment variables"""
     
@@ -15,8 +16,10 @@ class Settings(BaseSettings):
     
     # Ollama Configuration
     ollama_base_url: str = "http://localhost:11434"
-    ollama_llm_model: str = "qwen2.5:1.5b" ##"mistral:7b-instruct-q4_0" ##"codellama:7b"
+    ollama_llm_model: str = "qwen2.5:1.5b"
     ollama_embedding_model: str = "nomic-embed-text"
+    ollama_llm_temperature: float = 0.1  # Lower = more deterministic, Higher = more creative
+    ollama_llm_timeout: int = 180  # Timeout in seconds for LLM calls
     
     # Paths
     vector_store_path: str = "./vectorstore"
@@ -42,9 +45,31 @@ class Settings(BaseSettings):
     # Debounce Settings
     debounce_seconds: int = 3
     
+    # ========= PREDICTION CONFIGURATION =========
+    # Confidence-based outcome thresholds (0-100)
+    prediction_fail_max: int = 35       # 0-35% = FAIL
+    prediction_high_risk_max: int = 70  # 35-70% = HIGH_RISK
+    # 70-100% = PASS (implicit)
+    
+    # Violation ratio thresholds (0.0 to 1.0) - determines base outcome
+    prediction_fail_violation_threshold: float = 0.5  # >= 50% violations = likely FAIL
+    prediction_high_risk_violation_threshold: float = 0.3  # >= 30% violations = likely HIGH_RISK
+    
+    # Confidence boost for PASS predictions
+    prediction_pass_confidence_boost: int = 10  # Add 10% to PASS confidence
+    
+    # Rule satisfaction threshold (0.0 to 1.0)
+    rule_satisfaction_keyword_threshold: float = 0.6  # 60% of keywords must match
+    
+    # Prediction behavior
+    prediction_unknown_on_no_rules: bool = True  # Return UNKNOWN when no rules found
+    
+    # ========= END PREDICTION CONFIGURATION =========
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
+
 
 @lru_cache()
 def get_settings() -> Settings:
