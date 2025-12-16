@@ -1,61 +1,64 @@
-"""Vectorstore file watcher service"""
-import time
-import logging
-import requests
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+"""Vectorstore file watcher service"""  # Module docstring describing this file monitors vectorstore index files and triggers API reloads when they change
+import time  # Time library for debouncing logic and timestamps
+import logging  # Standard Python logging library to track reload events
+import requests  # HTTP library for making API calls to trigger vectorstore reload endpoint
+from watchdog.observers import Observer  # File system monitoring class that watches directories for changes
+from watchdog.events import FileSystemEventHandler  # Base class for handling file system events (modify, create, delete)
 
-logger = logging.getLogger(__name__)
 
-class VectorStoreReloader(FileSystemEventHandler):
-    """Monitors vectorstore files and triggers reload on changes"""
+logger = logging.getLogger(__name__)  # Create logger instance for this module to output watcher events
+
+
+class VectorStoreReloader(FileSystemEventHandler):  # Event handler class that monitors FAISS vectorstore files and triggers API rebuilds on changes
+    """Monitors vectorstore files and triggers reload on changes"""  # Docstring explaining this class watches for vectorstore updates and calls reload API
     
-    def __init__(self, api_base_url="http://localhost:8000"):
-        self.api_base_url = api_base_url
-        self.last_reload = 0
-        self.reload_delay = 3  # Wait 3 seconds to batch multiple changes
+    def __init__(self, api_base_url="http://localhost:8000"):  # Constructor that initializes the reloader with API base URL (defaults to localhost:8000)
+        self.api_base_url = api_base_url  # Store the API base URL where the rebuild endpoint lives
+        self.last_reload = 0  # Timestamp of the last reload trigger (initialized to 0 meaning no reloads yet)
+        self.reload_delay = 3  # Debounce period in seconds (wait 3 seconds to batch rapid changes and avoid triggering reload on every file write)
     
-    def on_modified(self, event):
-        """Triggered when vectorstore files are modified"""
-        if event.is_directory:
-            return
+    def on_modified(self, event):  # Handler method called by watchdog when a file is modified in the watched directory
+        """Triggered when vectorstore files are modified"""  # Docstring explaining this responds to file modification events
+        if event.is_directory:  # Check if the event is for a directory change
+            return  # Ignore directory events, only care about file changes
         
         # Only react to FAISS index files
-        if 'index.faiss' in event.src_path or 'index.pkl' in event.src_path:
-            current_time = time.time()
+        if 'index.faiss' in event.src_path or 'index.pkl' in event.src_path:  # Check if the modified file is a FAISS index file (index.faiss binary file or index.pkl metadata file)
+            current_time = time.time()  # Get current timestamp in seconds since epoch
             
             # Debounce: only reload if enough time passed since last reload
-            if current_time - self.last_reload > self.reload_delay:
-                logger.info(f" Vectorstore file changed: {event.src_path}")
-                self._trigger_reload()
-                self.last_reload = current_time
+            if current_time - self.last_reload > self.reload_delay:  # Check if at least 3 seconds have passed since last reload (debouncing to avoid excessive reloads)
+                logger.info(f" Vectorstore file changed: {event.src_path}")  # Log which file changed 
+                self._trigger_reload()  # Call internal method to trigger the API reload
+                self.last_reload = current_time  # Update last reload timestamp to current time for next debounce check
     
-    def _trigger_reload(self):
-        """Call the API rebuild endpoint"""
-        try:
-            logger.info(" Triggering vectorstore reload via API...")
-            response = requests.post(
-                f"{self.api_base_url}/api/rebuild",
-                timeout=30
+    def _trigger_reload(self):  # Private method that calls the API endpoint to reload the vectorstore in memory
+        """Call the API rebuild endpoint"""  # Docstring explaining this makes HTTP POST request to trigger vectorstore reload
+        try:  # Wrap in try-except to handle network errors gracefully
+            logger.info(" Triggering vectorstore reload via API...")  # Log that we're about to call the API 
+            response = requests.post(  # Make HTTP POST request to the rebuild endpoint
+                f"{self.api_base_url}/api/rebuild",  # Construct full URL by combining base URL with /api/rebuild path
+                timeout=30  # Set 30-second timeout to prevent hanging if API is slow or unresponsive
             )
             
-            if response.status_code == 200:
-                logger.info("✅ Vectorstore reloaded successfully")
-            else:
-                logger.error(f"❌ Reload failed: {response.status_code}")
+            if response.status_code == 200:  # Check if API returned success status code
+                logger.info("✅ Vectorstore reloaded successfully")  # Log success with checkmark emoji
+            else:  # If API returned non-200 status code
+                logger.error(f"❌ Reload failed: {response.status_code}")  # Log failure with X emoji and status code for debugging
         
-        except Exception as e:
-            logger.error(f" Failed to trigger reload: {e}")
+        except Exception as e:  # Catch any exceptions during API call (network errors, timeouts, etc.)
+            logger.error(f" Failed to trigger reload: {e}")  # Log error with details 
 
 
-def start_vectorstore_watcher(vectorstore_path: str, api_base_url="http://localhost:8000"):
-    """Start watching vectorstore directory for changes"""
-    event_handler = VectorStoreReloader(api_base_url)
-    observer = Observer()
-    observer.schedule(event_handler, vectorstore_path, recursive=False)
-    observer.start()
-    logger.info(f" Started watching vectorstore at: {vectorstore_path}")
-    return observer
+
+def start_vectorstore_watcher(vectorstore_path: str, api_base_url="http://localhost:8000"):  # Function to initialize and start the vectorstore file watcher
+    """Start watching vectorstore directory for changes"""  # Docstring explaining this sets up monitoring of vectorstore directory
+    event_handler = VectorStoreReloader(api_base_url)  # Create instance of our custom event handler with API base URL
+    observer = Observer()  # Create watchdog Observer instance (the main file monitoring engine)
+    observer.schedule(event_handler, vectorstore_path, recursive=False)  # Register our event handler to watch the vectorstore path (recursive=False means only watch the directory itself, not subdirectories)
+    observer.start()  # Start the observer thread (begins monitoring in background)
+    logger.info(f" Started watching vectorstore at: {vectorstore_path}")  # Log that watcher is running with the monitored path 
+    return observer  # Return the observer instance so caller can stop it later if needed
 
 
 
