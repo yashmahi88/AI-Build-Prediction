@@ -1,19 +1,7 @@
-<<<<<<< Updated upstream
-"""Vector store management service"""
-import os
-import logging
-from typing import List, Optional
-from langchain_community.vectorstores import FAISS
-from langchain_ollama import OllamaEmbeddings
-from langchain.schema import Document
-
-logger = logging.getLogger(__name__)
-=======
 """Vector store management service"""  # Module docstring describing this file manages FAISS vectorstore operations (load, save, search, add documents)
 import os  # Operating system interface for file and directory operations
 import logging  # Standard Python logging library for tracking vectorstore operations
 from typing import List, Optional  # Type hints for function signatures: List for arrays, Optional for nullable types
->>>>>>> Stashed changes
 
 
 from langchain_community.vectorstores import FAISS  # LangChain's FAISS wrapper for vector similarity search (Facebook AI Similarity Search)
@@ -36,19 +24,12 @@ class VectorStoreService:  # Service class that manages FAISS vectorstore lifecy
         
         logger.info(f"Initializing VectorStoreService with path: {vector_store_path}")  # Log initialization with configured path
         
-<<<<<<< Updated upstream
-        try:
-            self.embeddings = OllamaEmbeddings(
-                base_url="http://localhost:11434",
-                model="nomic-embed-text"
-=======
         try:  # Wrap embeddings initialization in try-except to handle connection errors
             self.embeddings = OllamaEmbeddings(  # Create Ollama embeddings instance for converting text to vectors
                 base_url="http://localhost:11434",  # Ollama server URL (default Ollama port)
                 model="nomic-embed-text:latest",  # Embedding model name (nomic-embed-text is optimized for retrieval, alternative: mxbai-embed-large)
                 num_ctx=8192,        # Context window size (must match model's context length - 8192 tokens for nomic-embed-text)
                 num_thread=4,  # Number of CPU threads to use for embedding generation (parallel processing)
->>>>>>> Stashed changes
             )
             logger.info("✅ Embeddings initialized")  # Log successful embeddings initialization
         except Exception as e:  # Catch any errors during embeddings initialization (Ollama not running, model not found, etc.)
@@ -97,18 +78,6 @@ class VectorStoreService:  # Service class that manages FAISS vectorstore lifecy
             self.vectorstore = None  # Set vectorstore to None to indicate loading failed
             return None  # Return None to indicate failure
     
-<<<<<<< Updated upstream
-    def load_or_build(self, force_rebuild: bool = False):
-        """Load existing vectorstore or build new one - ADDED METHOD"""
-        if force_rebuild:
-            logger.info("Force rebuild requested - clearing vectorstore")
-            self.vectorstore = None
-            
-            # Rebuild from MinIO
-            try:
-                from app.services.minio_service import MinIOService
-                from app.services.document_processor import DocumentProcessor
-=======
     def load_or_build(self, force_rebuild: bool = False):  # Method to load existing vectorstore or rebuild from sources (MinIO + Yocto docs)
         """Load existing vectorstore or build new one - ADDED METHOD
         
@@ -124,23 +93,10 @@ class VectorStoreService:  # Service class that manages FAISS vectorstore lifecy
                 from app.services.minio_service import MinIOService  # Import MinIO service for fetching user-uploaded files (lazy import to avoid circular dependencies)
                 from app.services.document_processor import DocumentProcessor  # Import document processor for chunking and formatting
                 from app.services.yocto_docs_service import scrape_yocto_docs  # Import Yocto documentation scraper
->>>>>>> Stashed changes
                 
                 minio_service = MinIOService()  # Create MinIO service instance to access object storage
                 doc_processor = DocumentProcessor()  # Create document processor instance for text chunking
                 
-<<<<<<< Updated upstream
-                # Get files from MinIO
-                files = minio_service.list_files()
-                documents = []
-                
-                for file in files:
-                    content = minio_service.get_file_content(file['Key'])
-                    if content:
-                        docs = doc_processor.process_text(
-                            content,
-                            metadata={'source': file['Key']}
-=======
                 documents: List[Document] = []  # Initialize empty list to collect all documents for vectorstore
                 
                 # 1) Get files from MinIO (if you still use it)
@@ -152,17 +108,9 @@ class VectorStoreService:  # Service class that manages FAISS vectorstore lifecy
                         docs = doc_processor.process_text(  # Process and chunk the content into Document objects
                             content,  # Raw text content from file
                             metadata={'source': file["Key"]}  # Add source metadata with file key (for citation tracking)
->>>>>>> Stashed changes
                         )
                         documents.extend(docs)  # Add all chunks to documents list
                 
-<<<<<<< Updated upstream
-                if documents:
-                    logger.info(f"Building vectorstore with {len(documents)} documents")
-                    self.build(documents)
-                else:
-                    logger.warning("No documents to build vectorstore")
-=======
                 # 2) Yocto docs from web
                 yocto_docs = scrape_yocto_docs()  # Scrape Yocto documentation from official website (returns list of Document objects)
                 if yocto_docs:  # If scraping returned documents
@@ -174,7 +122,6 @@ class VectorStoreService:  # Service class that manages FAISS vectorstore lifecy
                     self.build(documents)  # Build new FAISS index from all documents
                 else:  # No documents were collected from any source
                     logger.warning("No documents to build vectorstore")  # Log warning that vectorstore is empty
->>>>>>> Stashed changes
                     
             except Exception as e:  # Catch any errors during rebuild process
                 logger.error(f"❌ Error rebuilding vectorstore: {e}")  # Log error details
@@ -259,12 +206,6 @@ class VectorStoreService:  # Service class that manages FAISS vectorstore lifecy
             logger.error(f"❌ Error searching vectorstore: {e}")  # Log error details
             return []  # Return empty list on error (fail gracefully)
     
-<<<<<<< Updated upstream
-    def is_loaded(self) -> bool:
-        """Check if vectorstore is loaded"""
-        return self.vectorstore is not None
-=======
     def is_loaded(self) -> bool:  # Method to check if vectorstore is currently loaded in memory
         """Check if vectorstore is loaded"""  # Docstring explaining this returns vectorstore availability status
         return self.vectorstore is not None  # Return True if vectorstore is loaded, False if None (simple None check)
->>>>>>> Stashed changes

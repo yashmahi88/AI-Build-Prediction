@@ -195,7 +195,7 @@ async def chat_completions(
                         confidence_score,
                         violated_rules,
                         script_hash,
-                        detected_stack,              # Python list → PostgreSQL text[]
+                        json.dumps(detected_stack),             # Python list → PostgreSQL text[]
                         json.dumps(rules_applied),   # JSON string → PostgreSQL jsonb
                         prediction_id
                     ))

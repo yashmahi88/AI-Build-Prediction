@@ -83,48 +83,48 @@ def create_tables():  # Function to create required database tables if they do n
         with get_db_connection() as conn:  # Open a managed database connection from the pool
             with get_db_cursor(conn) as cur:  # Open a managed cursor that returns dict rows
                 # Predictions table
-                cur.execute("""  # Run SQL to create 'predictions' table if it doesn't exist
+                cur.execute("""  
                     CREATE TABLE IF NOT EXISTS predictions (
-                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),  # Unique ID for each prediction, auto-generated UUID (requires pgcrypto extension) [web:7][web:10]
-                        user_id VARCHAR(255) NOT NULL,  # ID of the user who triggered the prediction
-                        pipeline_name VARCHAR(255),  # Name of the CI/CD pipeline the prediction belongs to
-                        predicted_result VARCHAR(50),  # Predicted outcome (e.g., "success", "failure")
-                        confidence_score INT,  # Confidence score (0–100 or similar scale) for the prediction
-                        violated_rules INT,  # Number of rules or checks that were violated
-                        pipeline_script_hash VARCHAR(255),  # Hash of pipeline script to uniquely identify version/content
-                        detected_stack JSONB,  # JSON field describing detected tech stack or metadata (PostgreSQL JSONB type)
-                        actual_result VARCHAR(50),  # Actual final result of the pipeline run for comparison
-                        created_at TIMESTAMP DEFAULT NOW(),  # Timestamp when this prediction row was created
-                        updated_at TIMESTAMP DEFAULT NOW(),  # Timestamp for last update (should be updated on changes)
-                        feedback_received_at TIMESTAMP  # When feedback was received for this prediction (nullable)
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(), 
+                        user_id VARCHAR(255) NOT NULL,  
+                        pipeline_name VARCHAR(255),  
+                        predicted_result VARCHAR(50), 
+                        confidence_score INT,  
+                        violated_rules INT,  
+                        pipeline_script_hash VARCHAR(255),  
+                        detected_stack JSONB,  
+                        actual_result VARCHAR(50),  
+                        created_at TIMESTAMP DEFAULT NOW(),  
+                        updated_at TIMESTAMP DEFAULT NOW(),  
+                        feedback_received_at TIMESTAMP 
                     )
                 """)
                 
                 # Feedback table
-                cur.execute("""  # Run SQL to create 'feedback' table if it doesn't exist
+                cur.execute("""  
                     CREATE TABLE IF NOT EXISTS feedback (
-                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),  # Unique ID for each feedback entry, generated as UUID [web:7][web:10]
-                        prediction_id UUID REFERENCES predictions(id),  # Link back to a prediction row via foreign key
-                        user_id VARCHAR(255),  # ID of user providing the feedback (could match predictions.user_id)
-                        actual_build_result VARCHAR(50),  # Real build outcome reported in feedback
-                        correct_prediction BOOLEAN,  # Whether the model prediction matched the actual result
-                        corrected_confidence INT,  # Adjusted confidence score given by user (if they think model was off)
-                        missed_issues TEXT[],  # Array of text values listing issues the model missed
-                        false_positives TEXT[],  # Array of text values listing issues that were incorrectly flagged
-                        user_comments TEXT,  # Free-form feedback text from user
-                        created_at TIMESTAMP DEFAULT NOW()  # When this feedback entry was created
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),  
+                        prediction_id UUID REFERENCES predictions(id),  
+                        user_id VARCHAR(255),  
+                        actual_build_result VARCHAR(50),  
+                        correct_prediction BOOLEAN, 
+                        corrected_confidence INT,  
+                        missed_issues TEXT[],  
+                        false_positives TEXT[], 
+                        user_comments TEXT,
+                        created_at TIMESTAMP DEFAULT NOW()  
                     )
                 """)
                 
                 # Dynamic knowledge table
-                cur.execute("""  # Run SQL to create 'dynamic_knowledge' table if it doesn't exist
+                cur.execute(""" 
                     CREATE TABLE IF NOT EXISTS dynamic_knowledge (
-                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),  # Unique ID for each rule/knowledge entry (auto UUID) [web:7][web:10]
-                        source VARCHAR(255),  # Where this rule came from (e.g., "user_feedback", "logs", "docs")
-                        rule_text TEXT,  # Human-readable description or rule content
-                        confidence_score FLOAT,  # Confidence level of this rule being useful or correct
-                        rule_type VARCHAR(100),  # Category/type of rule (e.g., "lint", "test", "security")
-                        created_at TIMESTAMP DEFAULT NOW()  # Timestamp when this knowledge item was added
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),  
+                        source VARCHAR(255),  
+                        rule_text TEXT,  
+                        confidence_score FLOAT,  
+                        rule_type VARCHAR(100),  
+                        created_at TIMESTAMP DEFAULT NOW()  
                     )
                 """)
                 
@@ -134,18 +134,6 @@ def create_tables():  # Function to create required database tables if they do n
         print(f"⚠️  Error creating tables: {e}")  # Log detailed error message
         return False  # Indicate failure so caller can react
 
-<<<<<<< Updated upstream
-def close_db_pool():
-    """Close all database connections"""
-    global connection_pool
-    try:
-        if connection_pool:
-            connection_pool.closeall()
-            connection_pool = None
-            print("✅ Database pool closed")
-    except Exception as e:
-        print(f"Error closing pool: {e}")
-=======
 
 def close_db_pool():  # Function to fully close and clean up the connection pool (e.g., on app shutdown)
     """Close all database connections"""  # Docstring describing shutdown behavior for DB pool
@@ -157,4 +145,3 @@ def close_db_pool():  # Function to fully close and clean up the connection pool
             print("✅ Database pool closed")  # Log that pool shutdown completed
     except Exception as e:  # Catch any unexpected issues during closing
         print(f"Error closing pool: {e}")  # Log error so it can be investigated
->>>>>>> Stashed changes

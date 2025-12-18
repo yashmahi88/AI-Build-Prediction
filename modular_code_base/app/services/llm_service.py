@@ -1,16 +1,3 @@
-<<<<<<< Updated upstream
-"""LLM service for AI-generated suggestions with file-level details"""
-import logging
-import asyncio
-import re
-import os
-from typing import List, Dict
-from langchain_ollama import OllamaLLM
-
-
-logger = logging.getLogger(__name__)
-suggestion_cache = {}
-=======
 """LLM service for AI-generated suggestions with file-level details"""  # Module docstring describing this file uses Ollama LLM to generate actionable build fix suggestions
 import logging  # Standard Python logging library for tracking LLM operations
 import asyncio  # Python's async library for non-blocking LLM calls
@@ -24,27 +11,12 @@ from app.core.config import get_settings  # Function to load application configu
 
 
 logger = logging.getLogger(__name__)  # Create logger instance for this module to output LLM-related logs
->>>>>>> Stashed changes
 
 
 
 class LLMService:  # Service class that generates AI-powered suggestions for fixing build violations
     """Generate AI suggestions for build violations"""  # Docstring explaining this class uses LLM to create actionable fixes
     
-<<<<<<< Updated upstream
-    def __init__(self):
-        try:
-            self.llm = OllamaLLM(
-                model= "qwen2.5:1.5b", ##"mistral:7b-instruct-q4_0", ##"codellama:7b", ##"codegemma:2b", ##"qwen3-coder:480b-cloud",
-                base_url="http://localhost:11434",
-                temperature=0.1,
-                timeout=180
-            )
-            logger.info("[OK] LLM Service initialized")
-        except Exception as e:
-            logger.error(f"[ERROR] LLM init failed: {e}")
-            self.llm = None
-=======
     def __init__(self):  # Constructor that initializes connection to Ollama LLM
         try:  # Wrap initialization in try-except to handle LLM connection errors
             # Load settings from config
@@ -66,7 +38,6 @@ class LLMService:  # Service class that generates AI-powered suggestions for fix
         except Exception as e:  # Catch any initialization errors (LLM not running, wrong URL, etc.)
             logger.error(f"[ERROR] LLM init failed: {e}")  # Log error details
             self.llm = None  # Set llm to None so other methods know LLM is unavailable
->>>>>>> Stashed changes
     
     async def generate_suggestions(self, violated_rules: List[Dict], pipeline_text: str, workspace_path: str = None) -> List[str]:  # Async method that generates file-specific suggestions for violated rules
         """Generate AI suggestions WITH file-specific details"""  # Docstring explaining this creates suggestions with actual file paths from workspace
@@ -102,33 +73,13 @@ class LLMService:  # Service class that generates AI-powered suggestions for fix
                 matched_files  # Actual file paths from workspace
             )
             
-<<<<<<< Updated upstream
-            if suggestions:
-                logger.info(f"[OK] Generated {len(suggestions)} suggestions")
-            else:
-                logger.warning("[WARN] No suggestions from LLM")
-=======
             if suggestions:  # Check if LLM generated any suggestions
                 logger.info(f"[OK] Generated {len(suggestions)} file-specific suggestions")  # Log success with count
             else:  # No suggestions were generated
                 logger.error("[ERROR] No suggestions generated - parsing failed or LLM gave bad output")  # Log error (either LLM failed or response parsing failed)
->>>>>>> Stashed changes
             
             return suggestions  # Return list of suggestions (may be empty)
         
-<<<<<<< Updated upstream
-        except Exception as e:
-            logger.error(f"[ERROR] {e}", exc_info=True)
-            return self._generate_fallback_with_files(violated_rules)
-    
-    def _extract_file_details(self, violated_rules: List[Dict]) -> Dict:
-        """Extract file details from violations - FROM ORIGINAL CODE"""
-        details = {
-            'bbappend_files': [],
-            'config_files': [],
-            'environment_issues': [],
-            'disk_issues': []
-=======
         except Exception as e:  # Catch any errors during suggestion generation
             logger.exception(f"[ERROR] Suggestion generation failed: {e}")  # Log error with full traceback
             return []  # Return empty list on error
@@ -141,7 +92,6 @@ class LLMService:  # Service class that generates AI-powered suggestions for fix
             'recipe_files': [],  # List to store .bb recipe file references
             'environment_issues': [],  # List to store environment-related issues
             'disk_issues': []  # List to store disk space-related issues
->>>>>>> Stashed changes
         }
         
         for rule in violated_rules:  # Loop through each violated rule
@@ -152,14 +102,11 @@ class LLMService:  # Service class that generates AI-powered suggestions for fix
                 bbappend_matches = re.findall(r'([a-zA-Z0-9_-]+(?:[_-][\d\.]+)?\.bbappend)', rule.get('rule_text', ''))  # Regex to find .bbappend filenames (handles versions like recipe_1.0.bbappend)
                 details['bbappend_files'].extend(bbappend_matches)  # Add all found bbappend files to list
             
-<<<<<<< Updated upstream
-=======
             # Extract .bb recipe files
             if '.bb' in rule_text:  # Check if rule mentions .bb files
                 bb_matches = re.findall(r'([a-zA-Z0-9_-]+(?:[_-][\d\.]+)?\.bb)\b', rule.get('rule_text', ''))  # Regex to find .bb filenames (word boundary \b prevents matching .bbappend)
                 details['recipe_files'].extend(bb_matches)  # Add all found recipe files to list
             
->>>>>>> Stashed changes
             # Environment issues
             if 'environment' in rule_text:  # Check if rule mentions environment setup
                 details['environment_issues'].append('BitBake environment initialization')  # Add generic environment issue marker
@@ -174,33 +121,12 @@ class LLMService:  # Service class that generates AI-powered suggestions for fix
             if 'bblayers.conf' in rule_text:  # Check if rule mentions bblayers.conf
                 details['config_files'].append('bblayers.conf')  # Add bblayers.conf to config files list
         
-<<<<<<< Updated upstream
-        details['bbappend_files'] = list(set(details['bbappend_files']))
-        details['config_files'] = list(set(details['config_files']))
-=======
         details['bbappend_files'] = list(set(details['bbappend_files']))  # Remove duplicates by converting to set then back to list
         details['recipe_files'] = list(set(details['recipe_files']))  # Remove duplicates from recipe files
         details['config_files'] = list(set(details['config_files']))  # Remove duplicates from config files
->>>>>>> Stashed changes
         
         return details  # Return dict with all extracted file references
     
-<<<<<<< Updated upstream
-    def _scan_workspace(self, workspace_path: str) -> List[str]:
-        """Scan workspace for files"""
-        found_files = []
-        
-        try:
-            files_scanned = 0
-            max_files = 100
-            
-            for root, dirs, files in os.walk(workspace_path):
-                depth = root.replace(workspace_path, '').count(os.sep)
-                if depth > 3:
-                    continue
-                
-                dirs[:] = [d for d in dirs if d not in ['tmp', 'sstate-cache', 'downloads', '.git', 'build']]
-=======
     def _scan_workspace(self, workspace_path: str) -> List[str]:  # Method to recursively scan workspace for Yocto-related files
         """Scan workspace for Yocto files"""  # Docstring explaining this walks directory tree to find .bb, .bbappend, .conf files
         found_files = []  # Initialize empty list to store relative paths of found files
@@ -215,7 +141,6 @@ class LLMService:  # Service class that generates AI-powered suggestions for fix
                     continue  # Skip this directory and its subdirectories
                 
                 dirs[:] = [d for d in dirs if d not in ['tmp', 'sstate-cache', 'downloads', '.git', 'build', 'cache']]  # Filter out directories we don't want to scan (build artifacts, cache, git)
->>>>>>> Stashed changes
                 
                 for file_name in files:  # Loop through files in current directory
                     if files_scanned >= max_files:  # Check if we've hit the file limit
@@ -229,34 +154,18 @@ class LLMService:  # Service class that generates AI-powered suggestions for fix
                     except:  # Catch any errors getting file size (permission denied, etc.)
                         continue  # Skip this file on error
                     
-<<<<<<< Updated upstream
-                    if any(file_name.endswith(ext) for ext in {'.bbappend', '.conf', '.bb'}):
-                        rel_path = os.path.relpath(file_path, workspace_path)
-                        found_files.append(rel_path)
-                        files_scanned += 1
-=======
                     if any(file_name.endswith(ext) for ext in {'.bbappend', '.conf', '.bb', '.inc'}):  # Check if file has Yocto-related extension (.bbappend, .conf, .bb, .inc)
                         rel_path = os.path.relpath(file_path, workspace_path)  # Convert absolute path to relative path (relative to workspace root)
                         found_files.append(rel_path)  # Add relative path to found files list
                         files_scanned += 1  # Increment counter
             
             logger.info(f"[SCAN] Found {len(found_files)} Yocto files in workspace")  # Log total number of files found
->>>>>>> Stashed changes
         
         except Exception as e:  # Catch any errors during workspace scanning
             logger.warning(f"[WARN] Workspace scan error: {e}")  # Log warning but don't fail (return whatever files we found)
         
         return found_files  # Return list of relative paths to Yocto files
     
-<<<<<<< Updated upstream
-    def _match_files(self, specific_details: Dict, found_files: List[str]) -> Dict:
-        """Match found files to violations"""
-        matched = {
-            'existing_bbappend': {},
-            'missing_bbappend': [],
-            'existing_config': {},
-            'missing_config': []
-=======
     def _match_files(self, specific_details: Dict, found_files: List[str]) -> Dict:  # Method to match extracted file references to actual files found in workspace
         """Match found files to violations"""  # Docstring explaining this maps logical file references to actual workspace paths
         matched = {  # Initialize dict to categorize files as existing or missing
@@ -266,7 +175,6 @@ class LLMService:  # Service class that generates AI-powered suggestions for fix
             'missing_config': [],  # List of config files mentioned but not found
             'existing_recipes': {},  # Dict mapping recipe file references to actual paths
             'missing_recipes': []  # List of recipe files mentioned but not found
->>>>>>> Stashed changes
         }
         
         for bbappend_file in specific_details['bbappend_files']:  # Loop through each bbappend file extracted from violations
@@ -283,74 +191,6 @@ class LLMService:  # Service class that generates AI-powered suggestions for fix
             else:  # No matching file found
                 matched['missing_config'].append(config_file)  # Add to missing list
         
-<<<<<<< Updated upstream
-        return matched
-    
-    def _generate_with_universal_prompt(self, violated_rules: List[Dict], pipeline_text: str, specific_details: Dict, matched_files: Dict) -> List[str]:
-        """Generate with comprehensive context - FROM ORIGINAL CODE LOGIC"""
-        
-        violation_context = "\n".join([
-            f"• {rule.get('rule_text', str(rule))}"
-            for rule in violated_rules[:7]
-        ])
-        
-        workspace_context = "WORKSPACE FILES:\n"
-        if matched_files.get('existing_bbappend'):
-            workspace_context += "EXISTING .bbappend files:\n"
-            for name, path in matched_files['existing_bbappend'].items():
-                workspace_context += f"  - {path}\n"
-        
-        if matched_files.get('missing_bbappend'):
-            workspace_context += "MISSING .bbappend files:\n"
-            for name in matched_files['missing_bbappend']:
-                workspace_context += f"  - {name}\n"
-        
-        if matched_files.get('existing_config'):
-            workspace_context += "EXISTING config files:\n"
-            for name, path in matched_files['existing_config'].items():
-                workspace_context += f"  - {path}\n"
-        
-        if matched_files.get('missing_config'):
-            workspace_context += "MISSING config files:\n"
-            for name in matched_files['missing_config']:
-                workspace_context += f"  - {name}\n"
-        
-        ai_prompt = f"""Yocto build expert: Fix these violations with SPECIFIC file changes:
-
-VIOLATIONS:
-{violation_context}
-
-{workspace_context}
-
-PIPELINE:
-{pipeline_text[:600]}
-
-Generate 5 COMPLETE solutions using bullet points (•). Each must have:
-• Issue description
-  FILE: exact/file/path/to/modify
-  CHANGE: what to add/modify
-  CODE: exact command or configuration
-  (+X% confidence)
-
-Be specific. Include real file paths. Provide complete code. Make it actionable."""
-
-        try:
-            logger.info("[LLM] Calling Ollama...")
-            ai_response = self.llm.invoke(ai_prompt)
-            
-            if not ai_response:
-                logger.warning("[WARN] Empty response")
-                return []
-            
-            logger.info(f"[OK] Got {len(ai_response)} chars")
-            logger.debug(f"[PREVIEW] {ai_response[:200]}...")
-            
-            # Parse using ORIGINAL logic
-            suggestions = self._parse_universal_response(ai_response)
-            logger.info(f"[OK] Parsed {len(suggestions)} suggestions")
-            
-            return suggestions[:5]
-=======
         for recipe_file in specific_details['recipe_files']:  # Loop through each recipe file extracted from violations
             matching = [f for f in found_files if recipe_file in f or os.path.basename(f) == recipe_file]  # Find files where recipe name appears in path or matches basename
             if matching:  # If we found at least one matching file
@@ -479,122 +319,11 @@ Be specific. Include real file paths. Provide complete code. Make it actionable.
                 logger.error("[ERROR] Failed to parse structured suggestions")  # Log parsing error
                 logger.error("[DEBUG] Response did not match expected format with FILE:/CHANGE:/CODE:/WHY:")  # Log what went wrong
                 return []  # Return empty list
->>>>>>> Stashed changes
         
         except Exception as e:  # Catch any errors during LLM call or parsing
             logger.exception(f"[ERROR] LLM call failed: {e}")  # Log error with full traceback
             return []  # Return empty list on error
     
-<<<<<<< Updated upstream
-    def _parse_universal_response(self, ai_response: str) -> List[str]:
-        """Parse using ORIGINAL multi-strategy approach"""
-        suggestions = []
-        
-        # Strategy 1: Bullet format
-        suggestions = self._parse_bullet_format(ai_response)
-        if suggestions:
-            return suggestions
-        
-        # Strategy 2: Numbered format
-        suggestions = self._parse_numbered_format(ai_response)
-        if suggestions:
-            return suggestions
-        
-        # Strategy 3: Confidence indicators
-        suggestions = self._parse_confidence_format(ai_response)
-        if suggestions:
-            return suggestions
-        
-        # Strategy 4: Split by file mentions
-        suggestions = self._parse_file_mentions(ai_response)
-        return suggestions
-    
-    def _parse_bullet_format(self, text: str) -> List[str]:
-        """Parse bullet points"""
-        suggestions = []
-        lines = text.split('\n')
-        current = ""
-        
-        for line in lines:
-            if line.strip().startswith('•'):
-                if current and len(current) > 40:
-                    suggestions.append(current.strip())
-                current = line.strip()[1:].strip()
-            elif current:
-                current += '\n' + line
-        
-        if current and len(current) > 40:
-            suggestions.append(current.strip())
-        
-        return suggestions
-    
-    def _parse_numbered_format(self, text: str) -> List[str]:
-        """Parse numbered items"""
-        suggestions = []
-        lines = text.split('\n')
-        current = ""
-        
-        for line in lines:
-            if re.match(r'^\d+[\.\)]\s', line.strip()):
-                if current and len(current) > 40:
-                    suggestions.append(current.strip())
-                current = re.sub(r'^\d+[\.\)]\s+', '', line.strip())
-            elif current:
-                current += '\n' + line
-        
-        if current and len(current) > 40:
-            suggestions.append(current.strip())
-        
-        return suggestions
-    
-    def _parse_confidence_format(self, text: str) -> List[str]:
-        """Parse by confidence indicators"""
-        suggestions = []
-        pattern = r'\(\+\d+%\s*confidence\)'
-        parts = re.split(pattern, text)
-        
-        for i in range(len(parts) - 1):
-            part = parts[i].strip()
-            if len(part) > 40:
-                conf_match = re.search(pattern, text[text.find(part) + len(part):])
-                if conf_match:
-                    suggestions.append(part + ' ' + conf_match.group())
-        
-        return suggestions
-    
-    def _parse_file_mentions(self, text: str) -> List[str]:
-        """Parse by FILE: mentions"""
-        suggestions = []
-        
-        # Look for FILE: patterns
-        file_pattern = r'FILE:.*?(?=FILE:|$)'
-        matches = re.finditer(file_pattern, text, re.DOTALL | re.IGNORECASE)
-        
-        for match in matches:
-            chunk = match.group().strip()
-            if len(chunk) > 40:
-                suggestions.append(chunk)
-        
-        return suggestions
-    
-    def _generate_fallback_with_files(self, violated_rules: List[Dict]) -> List[str]:
-        """Generate fallback suggestions with file info"""
-        suggestions = []
-        
-        for i, rule in enumerate(violated_rules[:5], 1):
-            text = rule.get('rule_text', str(rule))[:80]
-            
-            suggestion = f"""• Fix violation {i}: {text}
-  FILE: conf/local.conf
-  CHANGE: Add appropriate configuration
-  CODE: # Update local.conf with needed settings
-  """
-            
-            suggestions.append(suggestion)
-        
-        logger.info(f"[FALLBACK] Generated {len(suggestions)} suggestions")
-        return suggestions
-=======
     def _extract_pipeline_values(self, pipeline_text: str) -> Dict[str, str]:  # Method to parse pipeline content and extract variable assignments
         """Extract actual variable values from pipeline code"""  # Docstring explaining this finds environment variables and their values
         values = {}  # Initialize empty dict to store variable assignments
@@ -691,4 +420,3 @@ Be specific. Include real file paths. Provide complete code. Make it actionable.
             logger.info(f"[PARSE] Successfully parsed {len(suggestions)} suggestions")  # Log success with count
         
         return suggestions  # Return list of parsed and formatted suggestions
->>>>>>> Stashed changes

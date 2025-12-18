@@ -1,14 +1,3 @@
-<<<<<<< Updated upstream
-"""Enhanced RAG analysis with workspace integration"""
-import logging
-import re
-import asyncio
-from typing import Dict, List
-from app.services.workspace_analysis_service import WorkspaceAnalysisService
-from app.services.retrieval_service import RetrievalService
-from app.services.vectorstore_service import VectorStoreService
-from app.extractors.rule_extractor import RuleExtractor
-=======
 """Enhanced RAG analysis with workspace integration"""  # Module docstring describing this file combines vectorstore retrieval, workspace analysis, and LLM suggestions for comprehensive CI/CD predictions
 import logging  # Standard Python logging library for tracking analysis pipeline
 import re  # Regular expression library for pattern matching in rules and pipeline content
@@ -19,23 +8,12 @@ from app.services.retrieval_service import RetrievalService  # Service that quer
 from app.services.vectorstore_service import VectorStoreService  # Service that manages FAISS vectorstore operations
 from app.extractors.rule_extractor import RuleExtractor  # Extractor that pulls rules from text using linguistic/structural patterns
 from app.core.config import get_settings  # Function to load application configuration settings
->>>>>>> Stashed changes
 
 
 
 logger = logging.getLogger(__name__)  # Create logger instance for this module to output analysis pipeline steps
 
 
-<<<<<<< Updated upstream
-class EnhancedAnalysisService:
-    """Advanced RAG analysis"""
-    
-    def __init__(self):
-        try:
-            logger.debug("[INIT] Initializing EnhancedAnalysisService...")
-            self.rule_extractor = RuleExtractor()
-            logger.debug("[OK] RuleExtractor initialized")
-=======
 
 class EnhancedAnalysisService:  # Main analysis service that orchestrates RAG pipeline, rule extraction, evaluation, and prediction
     """Advanced RAG analysis with configurable prediction logic"""  # Docstring explaining this service provides comprehensive AI-driven build prediction
@@ -50,7 +28,6 @@ class EnhancedAnalysisService:  # Main analysis service that orchestrates RAG pi
             
             self.rule_extractor = RuleExtractor()  # Initialize rule extractor for finding patterns in documents
             logger.debug("[OK] RuleExtractor initialized")  # Log successful rule extractor creation
->>>>>>> Stashed changes
             
             self.workspace_service = WorkspaceAnalysisService()  # Initialize workspace scanner for local Yocto project analysis
             logger.debug("[OK] WorkspaceAnalysisService initialized")  # Log successful workspace service creation
@@ -67,13 +44,8 @@ class EnhancedAnalysisService:  # Main analysis service that orchestrates RAG pi
             logger.exception(f"[ERROR] Error initializing EnhancedAnalysisService: {e}")  # Log full exception traceback for debugging
             raise  # Re-raise exception so caller knows initialization failed
     
-<<<<<<< Updated upstream
-    async def comprehensive_analyze(self, pipeline_content: str, user_id: str = None) -> Dict:
-        """Full analysis """
-=======
     async def comprehensive_analyze(self, pipeline_content: str, user_id: str = None) -> Dict:  # Main analysis method that runs entire RAG pipeline asynchronously
         """Full analysis"""  # Docstring describing this method performs complete analysis from retrieval to prediction
->>>>>>> Stashed changes
         
         try:  # Wrap entire analysis in try-except to handle errors gracefully
             logger.info(f"[ANALYSIS] Starting comprehensive analysis for user: {user_id}")  # Log start of analysis with user identifier
@@ -135,15 +107,6 @@ class EnhancedAnalysisService:  # Main analysis service that orchestrates RAG pi
             except Exception as e:  # Catch evaluation errors
                 logger.exception(f"[ERROR] Evaluation error: {e}")  # Log error with full traceback
             
-<<<<<<< Updated upstream
-            # Step 6: Make prediction
-            prediction = {'outcome': 'UNKNOWN', 'confidence': 50}
-            try:
-                prediction = self._make_prediction(result, len(all_rules))
-                logger.info(f"[OK] Prediction: {prediction['outcome']} ({prediction['confidence']}%)")
-            except Exception as e:
-                logger.exception(f"[ERROR] Prediction error: {e}")
-=======
             # Step 6: Make prediction using configurable thresholds
             prediction = {'outcome': 'UNKNOWN', 'confidence': 50}  # Initialize prediction with default unknown state
             try:  # Wrap prediction in try-except
@@ -151,7 +114,6 @@ class EnhancedAnalysisService:  # Main analysis service that orchestrates RAG pi
                 logger.info(f"[OK] Prediction: {prediction['outcome']} ({prediction['confidence']}%)")  # Log final prediction outcome and confidence score
             except Exception as e:  # Catch prediction errors
                 logger.exception(f"[ERROR] Prediction error: {e}")  # Log error with full traceback
->>>>>>> Stashed changes
             
             # Step 7: Generate AI suggestions with WORKSPACE PATH
             ai_suggestions = []  # Initialize empty list for LLM-generated suggestions
@@ -218,16 +180,9 @@ class EnhancedAnalysisService:  # Main analysis service that orchestrates RAG pi
                 )
                 logger.info(f"[OK] Response built ({len(analysis_text)} chars)")  # Log successful response building with character count
                 
-<<<<<<< Updated upstream
-                # ========= ADD PATTERN ALERTS =========
-                analysis_text = self.add_pattern_alerts(pipeline_content, analysis_text)
-                logger.info("[OK] Pattern alerts added to analysis")
-                # ========= END ADD =========
-=======
                 # Add pattern alerts from learned feedback
                 analysis_text = self.add_pattern_alerts(pipeline_content, analysis_text)  # Append learned pattern warnings from historical feedback data
                 logger.info("[OK] Pattern alerts added to analysis")  # Log that pattern alerts were successfully added
->>>>>>> Stashed changes
                 
             except Exception as e:  # Catch response building errors
                 logger.exception(f"[ERROR] Response error: {e}")  # Log error with full traceback
@@ -265,27 +220,16 @@ class EnhancedAnalysisService:  # Main analysis service that orchestrates RAG pi
                 'stack': []  # Empty stack list
             }
     
-<<<<<<< Updated upstream
-    def add_pattern_alerts(self, pipeline_content: str, analysis: str) -> str:
-        """Smart pattern matching with keyword extraction"""
-        alerts = []
-=======
     def add_pattern_alerts(self, pipeline_content: str, analysis: str) -> str:  # Method to append learned pattern warnings based on historical feedback data
         """Smart pattern matching with keyword extraction from learned feedback"""  # Docstring explaining this uses fuzzy matching on historical patterns
         alerts = []  # Initialize empty list to collect pattern alerts
->>>>>>> Stashed changes
         
         try:  # Wrap pattern matching in try-except to handle database errors
             from app.core.database import get_db_connection, get_db_cursor  # Import database utilities for querying learned patterns
             import re  # Import regex for keyword extraction
             
-<<<<<<< Updated upstream
-            # Common words to ignore
-            STOP_WORDS = {
-=======
             # Common words to ignore in keyword matching
             STOP_WORDS = {  # Set of common English words to exclude from keyword matching (improves fuzzy matching quality)
->>>>>>> Stashed changes
                 'the', 'and', 'for', 'with', 'this', 'that', 'from', 'has', 
                 'are', 'was', 'been', 'have', 'had', 'will', 'can', 'should'
             }
@@ -337,28 +281,6 @@ class EnhancedAnalysisService:  # Main analysis service that orchestrates RAG pi
         except Exception as e:  # Catch any errors during pattern matching
             logger.error(f"Pattern matching error: {e}")  # Log error (but don't fail entire analysis)
         
-<<<<<<< Updated upstream
-        if alerts:
-            # Sort by confidence
-            alerts.sort(key=lambda x: (x['count'], x['confidence']), reverse=True)
-            
-            alert_lines = [
-                f"{alert['text']} (reported {alert['count']}x)"
-                for alert in alerts[:5]  # Top 5 matches
-            ]
-            
-            alert_section = "\n\n LEARNED PATTERN ALERTS:\n" + "\n".join(alert_lines)
-            return analysis + alert_section
-        
-        return analysis
-
-        
-    def _evaluate_rules(self, rules: List[Dict], pipeline: str) -> Dict:
-        """Evaluate rules against pipeline"""
-        satisfied = 0
-        violated = 0
-        violations = []
-=======
         if alerts:  # If we found any pattern alerts
             # Sort by confidence and occurrence count
             alerts.sort(key=lambda x: (x['count'], x['confidence']), reverse=True)  # Sort alerts by occurrence count first, then confidence (descending order)
@@ -378,7 +300,6 @@ class EnhancedAnalysisService:  # Main analysis service that orchestrates RAG pi
         satisfied = 0  # Counter for rules that passed satisfaction check
         violated = 0  # Counter for rules that failed satisfaction check
         violations = []  # List to store violated rule texts for display
->>>>>>> Stashed changes
         
         for rule in rules:  # Loop through each rule in the list
             rule_text = rule.get('rule_text', '') if isinstance(rule, dict) else str(rule)  # Extract rule text (handle both dict and string formats)
@@ -394,12 +315,6 @@ class EnhancedAnalysisService:  # Main analysis service that orchestrates RAG pi
             'violations': violations[:10]  # First 10 violation texts for display ([:10] limits output)
         }
     
-<<<<<<< Updated upstream
-    def _rule_satisfied(self, rule: str, pipeline: str) -> bool:
-        """Check if rule is satisfied"""
-        if not rule or not pipeline:
-            return False
-=======
     def _rule_satisfied(self, rule: str, pipeline: str) -> bool:  # Method to check if a single rule is satisfied based on keyword matching
         """
         Check if rule is satisfied using configurable keyword threshold
@@ -413,30 +328,16 @@ class EnhancedAnalysisService:  # Main analysis service that orchestrates RAG pi
         """  # Detailed docstring explaining satisfaction logic
         if not rule or not pipeline:  # Check if either input is empty/None
             return False  # Return False for invalid inputs (can't evaluate)
->>>>>>> Stashed changes
         
         rule_lower = rule.lower()  # Convert rule to lowercase for case-insensitive matching
         pipeline_lower = pipeline.lower()  # Convert pipeline to lowercase for case-insensitive matching
         
-<<<<<<< Updated upstream
-        key_terms = re.findall(r'\b[a-z]{3,}\b', rule_lower)
-=======
         # Extract key terms (3+ character words)
         key_terms = re.findall(r'\b[a-z]{3,}\b', rule_lower)  # Find all words with 3+ lowercase letters (significant keywords)
->>>>>>> Stashed changes
         
         if not key_terms:  # If no key terms extracted (rule is too short or has no meaningful words)
             return False  # Return False since we can't evaluate satisfaction
         
-<<<<<<< Updated upstream
-        matches = sum(1 for term in key_terms if term in pipeline_lower)
-        return matches / len(key_terms) >= 0.6
-    
-    def _make_prediction(self, result: Dict, total_rules: int) -> Dict:
-        """Make prediction"""
-        if total_rules == 0:
-            return {'outcome': 'UNKNOWN', 'confidence': 50}
-=======
         # Count how many key terms appear in pipeline
         matches = sum(1 for term in key_terms if term in pipeline_lower)  # Count how many key terms from rule appear in pipeline content
         match_ratio = matches / len(key_terms)  # Calculate percentage of key terms that matched
@@ -473,52 +374,10 @@ class EnhancedAnalysisService:  # Main analysis service that orchestrates RAG pi
             else:  # Config says default to pass when no rules exist
                 logger.warning("[PREDICTION] No rules found - defaulting to PASS")  # Log that we're defaulting to pass
                 return {'outcome': 'PASS', 'confidence': 70}  # Return pass with moderate 70% confidence
->>>>>>> Stashed changes
         
         satisfied = result.get('satisfied', 0)  # Extract satisfied count from evaluation results (default 0 if missing)
         violated = result.get('violated', 0)  # Extract violated count from evaluation results (default 0 if missing)
         
-<<<<<<< Updated upstream
-        satisfaction_ratio = satisfied / total_rules
-        violation_ratio = violated / total_rules
-        
-        base_confidence = int(satisfaction_ratio * 100)
-        
-        if violation_ratio >= 0.5:
-            return {
-                'outcome': 'FAIL',
-                'confidence': max(30, 100 - base_confidence)
-            }
-        elif violation_ratio >= 0.3:
-            return {
-                'outcome': 'HIGH_RISK',
-                'confidence': max(55, min(75, base_confidence))
-            }
-        else:
-            return {
-                'outcome': 'PASS',
-                'confidence': min(95, base_confidence + 10)
-            }
-    
-    def _build_comprehensive_response(self, pipeline, rules, result, docs, workspace_rules, prediction, ai_suggestions=None) -> str:
-        """Build response"""
-        
-        response = f"""
-
-ESTABLISHED_RULES:
-"""
-        
-        for rule in rules[:50]:
-            rule_text = rule.get('rule_text', '')[:100] if isinstance(rule, dict) else str(rule)[:100]
-            status = "PASS" if self._rule_satisfied(rule_text, pipeline) else "FAIL"
-            response += f"* {rule_text}... - {status}\n"
-        
-        if workspace_rules:
-            response += f"\nREAL YOCTO WORKSPACE ANALYSIS:\nFound {len(workspace_rules)} specific rules from actual Yocto files\n"
-            for r in workspace_rules[:10]:
-                rule_text = r.get('rule_text', '') if isinstance(r, dict) else str(r)
-                response += f"* {rule_text}\n"
-=======
         # Calculate satisfaction ratio (internal only)
         satisfaction_ratio = satisfied / total_rules  # Calculate percentage of rules that were satisfied (0.0 to 1.0)
         violation_ratio = violated / total_rules  # Calculate percentage of rules that were violated (0.0 to 1.0)
@@ -573,37 +432,21 @@ ESTABLISHED RULES ANALYSIS:
             for r in workspace_rules[:10]:  # Loop through first 10 workspace rules ([:10] limits output)
                 rule_text = r.get('rule_text', '') if isinstance(r, dict) else str(r)  # Extract rule text (handle dict/string formats)
                 response += f"  * {rule_text}\n"  # Add bullet point with rule text (indented for visual hierarchy)
->>>>>>> Stashed changes
         
         response += f"""
 APPLICABLE_RULES: {len(rules)}
 SATISFIED_RULES: {result.get('satisfied', 0)}
 VIOLATED_RULES: {result.get('violated', 0)}
 
-<<<<<<< Updated upstream
-BUILD_PREDICTION: {prediction['outcome']}
-=======
 
 {'='*70}
 BUILD PREDICTION: {prediction['outcome']}
->>>>>>> Stashed changes
 CONFIDENCE: {prediction['confidence']}%
 
 
 AI-GENERATED SUGGESTIONS TO IMPROVE CONFIDENCE:
 """  # Add summary section with counts, prediction, and suggestions header
         
-<<<<<<< Updated upstream
-        if ai_suggestions and len(ai_suggestions) > 0:
-            logger.info(f"[BUILD] Adding {len(ai_suggestions)} suggestions")
-            for i, suggestion in enumerate(ai_suggestions, 1):
-                response += f"{i}. {suggestion}\n"
-        else:
-            logger.warning("[WARN] No AI suggestions")
-            response += "No AI suggestions generated in this analysis.\n"
-        
-        response += "\n" + "="*70 + "\nSOURCES & REFERENCES:\n" + "="*70 + "\n"
-=======
         # Add AI suggestions
         if ai_suggestions and len(ai_suggestions) > 0:  # Check if LLM generated any suggestions
             logger.info(f"[BUILD] Adding {len(ai_suggestions)} AI suggestions")  # Log that we're adding suggestions
@@ -615,36 +458,11 @@ AI-GENERATED SUGGESTIONS TO IMPROVE CONFIDENCE:
         
         # Add sources section
         response += "\n" + "="*70 + "\nSOURCES & REFERENCES:\n" + "="*70 + "\n"  # Add sources section header with separator lines
->>>>>>> Stashed changes
         
         seen_sources = set()  # Initialize set to track sources we've already added (prevents duplicates)
         sources_list = []  # Initialize list to store formatted source lines
         source_count = 1  # Counter for source numbering (starts at 1)
         
-<<<<<<< Updated upstream
-        if docs and len(docs) > 0:
-            logger.info(f"[BUILD] Processing {len(docs)} documents...")
-            for doc in docs[:20]:
-                try:
-                    if hasattr(doc, 'metadata') and doc.metadata:
-                        confluence_url = doc.metadata.get('confluence_url', '')
-                        if confluence_url:
-                            source = doc.metadata.get('source', 'Confluence')
-                            unique_key = f"confluence:{confluence_url}"
-                            
-                            if unique_key not in seen_sources:
-                                seen_sources.add(unique_key)
-                                page_name = source.split('/')[-1].replace('.md', '').replace('_', ' ') if '/' in source else 'Confluence'
-                                sources_list.append(f"{source_count}. {page_name} - {confluence_url}")
-                                source_count += 1
-                        
-                        source = doc.metadata.get('source', '')
-                        if 'jenkins' in str(source).lower():
-                            match = re.search(r'([a-zA-Z0-9_-]+)-(\d+)', str(source))
-                            if match:
-                                job, build = match.groups()
-                                unique_key = f"jenkins:{job}:{build}"
-=======
         if docs and len(docs) > 0:  # Check if we have retrieved documents to cite
             logger.info(f"[BUILD] Processing {len(docs)} documents...")  # Log that we're processing documents for sources
             for doc in docs[:20]:  # Loop through first 20 documents ([:20] limits source count)
@@ -669,7 +487,6 @@ AI-GENERATED SUGGESTIONS TO IMPROVE CONFIDENCE:
                             if match:  # If regex found job and build number
                                 job, build = match.groups()  # Extract job name and build number from regex groups
                                 unique_key = f"jenkins:{job}:{build}"  # Create unique key for deduplication
->>>>>>> Stashed changes
                                 
                                 if unique_key not in seen_sources:  # Check if we haven't already added this source
                                     seen_sources.add(unique_key)  # Mark this source as seen
@@ -679,15 +496,6 @@ AI-GENERATED SUGGESTIONS TO IMPROVE CONFIDENCE:
                 except Exception as e:  # Catch any errors processing individual sources
                     logger.warning(f"[WARN] Error processing source: {e}")  # Log warning but continue processing other sources
         
-<<<<<<< Updated upstream
-        if sources_list:
-            logger.info(f"[OK] Showing {len(sources_list)} UNIQUE sources")
-            for source in sources_list:
-                response += f"{source}\n"
-        else:
-            logger.warning("[WARN] No sources found")
-            response += "No sources retrieved.\n"
-=======
         if sources_list:  # If we collected any sources
             logger.info(f"[OK] Showing {len(sources_list)} UNIQUE sources")  # Log number of unique sources being displayed
             for source in sources_list:  # Loop through formatted source lines
@@ -695,7 +503,6 @@ AI-GENERATED SUGGESTIONS TO IMPROVE CONFIDENCE:
         else:  # No sources were found
             logger.warning("[WARN] No sources found")  # Log warning that no sources are available
             response += "No specific sources retrieved for this analysis.\n"  # Add fallback message
->>>>>>> Stashed changes
         
         response += "="*70 + "\n"  # Add closing separator line
         

@@ -1,16 +1,7 @@
-<<<<<<< Updated upstream
-"""Document retrieval from vectorstore"""
-import logging
-from typing import List
-from langchain.schema import Document
-
-logger = logging.getLogger(__name__)
-=======
 """Document retrieval from vectorstore"""  # Module docstring describing this file handles semantic search over vectorstore to find relevant documents
 import logging  # Standard Python logging library for tracking retrieval operations
 from typing import List  # Type hint for function return types: List for arrays
 from langchain_core.documents import Document  # LangChain's Document class representing text chunks with metadata
->>>>>>> Stashed changes
 
 
 logger = logging.getLogger(__name__)  # Create logger instance for this module to output retrieval-related logs
@@ -49,12 +40,6 @@ class RetrievalService:  # Service class that provides document retrieval functi
             
             return docs  # Return list of retrieved documents with ensured metadata
         
-<<<<<<< Updated upstream
-        except Exception as e:
-            logger.error(f"❌ Error retrieving documents: {e}")
-            return []
-=======
         except Exception as e:  # Catch any errors during retrieval (vectorstore errors, search failures, etc.)
             logger.error(f"❌ Error retrieving documents: {e}")  # Log error with details 
             return []  # Return empty list on error (fail gracefully so analysis can continue with workspace rules)
->>>>>>> Stashed changes
