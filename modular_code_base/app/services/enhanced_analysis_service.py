@@ -54,7 +54,7 @@ class EnhancedAnalysisService:  # Main analysis service that orchestrates RAG pi
             relevant_docs = []  # Initialize empty list to store retrieved documents
             try:  # Wrap retrieval in try-except to continue even if vectorstore fails
                 logger.debug("[RETRIEVE] Retrieving documents from vectorstore...")  # Log start of document retrieval
-                relevant_docs = self.retrieval_service.retrieve_relevant_documents(pipeline_content, k=10)  # Query vectorstore for 10 most relevant documents based on pipeline content similarity
+                relevant_docs = self.retrieval_service.retrieve_relevant_documents(pipeline_content, k=20)  # Query vectorstore for 10 most relevant documents based on pipeline content similarity
                 logger.info(f"[OK] Retrieved {len(relevant_docs)} documents")  # Log number of documents successfully retrieved
             except Exception as e:  # Catch retrieval errors
                 logger.exception(f"[ERROR] Error retrieving documents: {e}")  # Log error with full traceback
@@ -239,7 +239,7 @@ class EnhancedAnalysisService:  # Main analysis service that orchestrates RAG pi
                     cur.execute("""
                         SELECT pattern_text, pattern_type, occurrences
                         FROM learned_patterns
-                        WHERE occurrences >= 1
+                        WHERE pattern_type = 'failure_indicator' AND occurrences > 1 
                         ORDER BY occurrences DESC
                     """)  # Query learned_patterns table for patterns that have occurred at least once (ordered by most common first)
                     

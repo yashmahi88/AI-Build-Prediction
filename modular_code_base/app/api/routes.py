@@ -914,6 +914,85 @@ async def get_status():
     }
 
 
+
+@router.post("/api/yocto-docs/force-refresh")
+async def force_refresh_yocto_docs(x_user_id: Optional[str] = Header(None)):
+    """Force refresh Yocto docs (bypass interval check)"""
+    try:
+        from app.services.yocto_docs_service import scrape_yocto_docs, _last_fetch_ts
+        import app.services.yocto_docs_service as yocto_service
+        
+        logger.info("🔄 FORCE refreshing Yocto docs (bypassing interval)...")
+        
+        # Reset timestamp to force scrape
+        yocto_service._last_fetch_ts = 0.0
+        
+        # Scrape fresh docs
+        docs = scrape_yocto_docs()
+        
+        if not docs:
+            raise HTTPException(status_code=500, detail="No docs scraped")
+        
+        # Add to vectorstore
+        vectorstore_service = get_vectorstore_service()
+        vectorstore_service.vectorstore.add_documents(docs)
+        
+        logger.info(f"✅ FORCE added {len(docs)} Yocto doc chunks")
+        
+        return {
+            "status": "success",
+            "message": f"Yocto docs force-refreshed successfully",
+            "chunks_added": len(docs),
+            "urls_scraped": len([
+                "https://docs.yoctoproject.org/current/ref-manual/",
+                "https://docs.yoctoproject.org/current/dev-manual/",
+                "https://docs.yoctoproject.org/current/bitbake-user-manual/",
+                "https://docs.yoctoproject.org/migration-guides/index.html"
+            ]),
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    except Exception as e:
+        logger.exception(f"❌ Force refresh error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/yocto-docs/status")
+async def get_yocto_docs_status(x_user_id: Optional[str] = Header(None)):
+    """Check Yocto docs scraping status"""
+    try:
+        from app.services.yocto_docs_service import _last_fetch_ts, YOCTO_DOC_URLS
+        from app.core.config import get_settings
+        
+        settings = get_settings()
+        
+        enabled = getattr(settings, "yocto_doc_scrape_enabled", False)
+        interval_hours = getattr(settings, "yocto_doc_update_interval_hours", 24)
+        
+        last_scrape = None
+        if _last_fetch_ts > 0:
+            last_scrape = datetime.fromtimestamp(_last_fetch_ts).isoformat()
+        
+        next_scrape = None
+        if _last_fetch_ts > 0:
+            next_timestamp = _last_fetch_ts + (interval_hours * 3600)
+            next_scrape = datetime.fromtimestamp(next_timestamp).isoformat()
+        
+        return {
+            "status": "success",
+            "scraping_enabled": enabled,
+            "update_interval_hours": interval_hours,
+            "last_scraped_at": last_scrape,
+            "next_scrape_at": next_scrape,
+            "urls_monitored": YOCTO_DOC_URLS,
+            "url_count": len(YOCTO_DOC_URLS)
+        }
+    
+    except Exception as e:
+        logger.exception(f"Status error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+        
 # ========= OLLAMA COMPATIBILITY ENDPOINTS =========
 
 @router.get("/api/tags")

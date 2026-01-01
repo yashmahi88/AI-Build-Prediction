@@ -9,3 +9,5 @@ langchain_ollama
 nltk
 scikit-learn
 python-dotenv
+beautifulsoup4 
+requests

@@ -1,10 +1,5 @@
-<<<<<<< Updated upstream
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from typing import List
-=======
 from langchain_text_splitters import RecursiveCharacterTextSplitter  # LangChain's text splitter that recursively splits text by separators (newlines, periods, spaces) to create semantically meaningful chunks
 from typing import List  # Type hint for list types (imported but not used in this code)
->>>>>>> Stashed changes
 
 
 def create_confluence_splitter() -> RecursiveCharacterTextSplitter:  # Factory function to create text splitter optimized for documentation (Confluence pages, manuals, guides)
